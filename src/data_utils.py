@@ -14,7 +14,7 @@ class DataUtil(object):
     self.hparams.src_vocab_size = len(self.src_i2w)
 
     self.trg_i2w, self.trg_w2i = self._build_vocab(self.hparams.trg_vocab)
-    self.hparams.trg_vocab_size = len(self.src_i2w)
+    self.hparams.trg_vocab_size = len(self.trg_i2w)
 
     if not self.hparams.decode:
       self.train_x = []
@@ -90,13 +90,24 @@ class DataUtil(object):
     # pad 
     x_train, x_mask, x_count, x_len, x_pos_emb_idxs = self._pad(x_train, self.hparams.pad_id)
     y_train, y_mask, y_count, y_len, y_pos_emb_idxs = self._pad(y_train, self.hparams.pad_id)
+    # sample some y
+    y_sampled = [self.sample_y() for _ in range(batch_size)]
+    y_sampled, y_sampled_mask, y_sampled_count, y_sampled_len, y_sampled_pos_emb_idxs = self._pad(y_sampled, self.hparams.pad_id)
 
     if self.train_index >= self.n_train_batches:
       self.reset_train()
       eop = True
     else:
       eop = False
-    return x_train, x_mask, x_count, x_len, x_pos_emb_idxs, y_train, y_mask, y_count, y_len, y_pos_emb_idxs, batch_size, eop 
+    return x_train, x_mask, x_count, x_len, x_pos_emb_idxs, y_train, y_mask, y_count, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_count, y_sampled_len, y_sampled_pos_emb_idxs, batch_size, eop 
+
+  def sample_y(self):
+    # first how many attrs?
+    attn_num = random.randint(1, self.hparams.trg_vocab_size//2)
+    # then select attrs
+    y = np.random.binomial(1, 0.5, attn_num)
+    y = y + np.arange(attn_num) * 2
+    return y.tolist()
 
   def next_dev(self, dev_batch_size=1):
     start_index = self.dev_index

@@ -440,12 +440,12 @@ def train():
   tr_loss, update_batch_size = None, 0
   while True:
     step += 1
-    x_train, x_mask, x_count, x_len, x_pos_emb_idxs, y_train, y_mask, y_count, y_len, y_pos_emb_idxs, batch_size,  eop = data.next_train()
+    x_train, x_mask, x_count, x_len, x_pos_emb_idxs, y_train, y_mask, y_count, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_count, y_sampled_len, y_pos_emb_idxs, batch_size,  eop = data.next_train()
     target_words += (y_count - batch_size)
-    trans_logits, noise_logits = model.forward(x_train, x_mask, x_len, x_pos_emb_idxs, y_train[:,:-1], y_mask[:,:-1], y_len, y_pos_emb_idxs)
+    trans_logits, noise_logits = model.forward(x_train, x_mask, x_len, x_pos_emb_idxs, y_train, y_mask, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_len)
     trans_logits = trans_logits.view(-1, hparams.src_vocab_size)
     noise_logits = noise_logits.view(-1, hparams.src_vocab_size)
-    labels = x_train[:,1:].contiguous().view(-1)
+    labels = x_train.contiguous().view(-1)
 
     cur_tr_loss, cur_tr_acc = get_performance(crit, trans_logits, noise_logits, 0.5, labels, hparams)
     total_loss += cur_tr_loss.item()

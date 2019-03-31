@@ -20,12 +20,10 @@ python3.6 src/main.py \
   --trg_vocab  data/test/train.attr.vocab \
   --d_word_vec=128 \
   --d_model=512 \
-  --log_every=50 \
+  --log_every=2 \
   --eval_every=2500 \
   --ppl_thresh=15 \
-  --cuda \
-  --batcher='word' \
-  --batch_size 1500 \
+  --batch_size 2 \
   --valid_batch_size=7 \
   --patience 5 \
   --lr_dec 0.8 \
