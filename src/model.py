@@ -77,9 +77,9 @@ class Encoder(nn.Module):
     # [batch_size, max_len, d_word_vec]
     word_emb = self.word_emb(x_train)
     word_emb = self.dropout(word_emb)
-    #packed_word_emb = pack_padded_sequence(word_emb, x_len)
-    enc_output, (ht, ct) = self.layer(word_emb)
-    #enc_output, _ = pad_packed_sequence(enc_output,  padding_value=self.hparams.pad_id)
+    packed_word_emb = pack_padded_sequence(word_emb, x_len)
+    enc_output, (ht, ct) = self.layer(packed_word_emb)
+    enc_output, _ = pad_packed_sequence(enc_output,  padding_value=self.hparams.pad_id)
     #enc_output, (ht, ct) = self.layer(word_emb)
     enc_output = enc_output.permute(1, 0, 2)
 
@@ -183,8 +183,17 @@ class Seq2Seq(nn.Module):
       y_sampled_len = y_sampled_len.cuda()
 
     # first translate based on y_sampled
-    x_trans, x_trans_mask, x_trans_len = self.get_translations(x_train, x_mask, x_len, y_sampled, y_sampled_mask, y_sampled_len)
+    x_trans, x_trans_mask, x_trans_len, index = self.get_translations(x_train, x_mask, x_len, y_sampled, y_sampled_mask, y_sampled_len)
+    index = torch.LongTensor(index.tolist())
+    if self.hparams.cuda:
+      index = index.cuda()
     x_trans_enc, x_trans_init = self.encoder(x_trans, x_trans_len)
+    x_trans_enc = torch.index_select(x_trans_enc, 0, index)
+    new_x_trans_init = []
+    new_x_trans_init.append(torch.index_select(x_trans_init[0], 0, index))
+    new_x_trans_init.append(torch.index_select(x_trans_init[1], 0, index))
+    x_trans_init = (new_x_trans_init[0], new_x_trans_init[1])
+
     x_trans_enc_k = self.enc_to_k(x_trans_enc)
     trans_logits = self.decoder(x_trans_enc, x_trans_enc_k, x_trans_init, x_trans_mask, y_sampled, y_sampled_mask, y_sampled_len, x_train, x_len)
 
@@ -200,8 +209,15 @@ class Seq2Seq(nn.Module):
   def get_translations(self, x_train, x_mask, x_len, y_sampled, y_sampled_mask, y_sampled_len):
     translated_x = self.translate(x_train, x_mask, y_sampled, y_sampled_mask, y_sampled_len, beam_size=1)
     translated_x = [[self.hparams.bos_id]+x+[self.hparams.eos_id] for x in translated_x]
+    
+
+    translated_x = np.array(translated_x)
+    trans_len = [len(i) for i in translated_x]
+    index = np.argsort(trans_len)
+    index = index[::-1]
+    translated_x = translated_x[index].tolist()
     x_trans, x_mask, x_count, x_len, _ = self.data._pad(translated_x, self.hparams.pad_id)
-    return x_trans, x_mask, x_len
+    return x_trans, x_mask, x_len, index
 
   def add_noise(self, x_train, x_mask, x_len):
 
