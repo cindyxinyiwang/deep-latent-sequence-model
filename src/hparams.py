@@ -5,7 +5,8 @@ class HParams(object):
     self.pad = "<pad>"
     self.unk = "<unk>"
     self.bos = "<s>"
-    self.eos = "<\s>"
+    # self.eos = "<\s>"
+    self.eos = "</s>"
     self.pad_id = 0
     self.unk_id = 1
     self.bos_id = 2

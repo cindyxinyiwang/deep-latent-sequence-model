@@ -124,9 +124,10 @@ class Decoder(nn.Module):
     batch_size, x_max_len = x_train.size()
     assert batch_size_x == batch_size
     hidden = dec_init 
-    input_feed = Variable(torch.zeros(batch_size, self.hparams.d_model * 2), requires_grad=False)
-    if self.hparams.cuda:
-      input_feed = input_feed.cuda()
+    input_feed = torch.zeros((batch_size, self.hparams.d_model * 2), 
+        requires_grad=False, device=self.hparams.device)
+    # if self.hparams.cuda:
+    #   input_feed = input_feed.cuda()
     # [batch_size, y_len, d_word_vec]
     x_emb = self.word_emb(x_train)
 
@@ -243,9 +244,10 @@ class Seq2Seq(nn.Module):
     length = 0
     completed_hyp = []
     with torch.no_grad():
-      input_feed = Variable(torch.zeros(1, self.hparams.d_model * 2), requires_grad=False)
-    if self.hparams.cuda:
-      input_feed = input_feed.cuda()
+      input_feed = torch.zeros((1, self.hparams.d_model * 2), 
+        requires_grad=False, device=self.hparams.device)
+    # if self.hparams.cuda:
+    #   input_feed = input_feed.cuda()
     active_hyp = [Hyp(state=dec_init, y=[self.hparams.bos_id], ctx_tm1=input_feed, score=0.)]
     while len(completed_hyp) < beam_size and length < max_len:
       length += 1
@@ -255,9 +257,7 @@ class Seq2Seq(nn.Module):
           # ave attr emb
           y_tm1 = self.decoder.attr_emb(y).sum(1) / y_len.float()
         else:
-          y_tm1 = Variable(torch.LongTensor([int(hyp.y[-1])] ))
-          if self.hparams.cuda:
-            y_tm1 = y_tm1.cuda()
+          y_tm1 = torch.LongTensor([int(hyp.y[-1])], device=self.hparams.device)
           y_tm1 = self.decoder.word_emb(y_tm1)
         logits, dec_state, ctx = self.decoder.step(x_enc, x_enc_k, x_mask, y_tm1, hyp.state, hyp.ctx_tm1, self.data)
         hyp.state = dec_state

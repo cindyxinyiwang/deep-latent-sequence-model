@@ -174,9 +174,9 @@ def eval(model, data, crit, step, hparams, eval_bleu=False,
     #print(y_valid)
     #print(y_mask)
     # do this since you shift y_valid[:, 1:] and y_valid[:, :-1]
-    y_count -= batch_size
+    x_count -= batch_size
     # word count
-    valid_words += y_count
+    valid_words += x_count
 
     logits = model.forward(
       x_valid, x_mask, x_len, x_pos_emb_idxs,
@@ -246,6 +246,7 @@ def eval(model, data, crit, step, hparams, eval_bleu=False,
   return val_ppl, valid_bleu
 
 def train():
+  device = torch.device("cuda" if args.cuda else "cpu")
   if args.load_model and (not args.reset_hparams):
     print("load hparams..")
     hparams_file_name = os.path.join(args.output_dir, "hparams.pt")
@@ -267,6 +268,7 @@ def train():
       max_len=args.max_len,
       n_train_sents=args.n_train_sents,
       cuda=args.cuda,
+      device=device,
       d_word_vec=args.d_word_vec,
       d_model=args.d_model,
       d_inner=args.d_inner,
@@ -417,8 +419,7 @@ def train():
     cur_attempt = 0
     lr = hparams.lr
 
-  if args.cuda:
-    model = model.cuda()
+  model.to(device)
 
   if args.reset_hparams:
     lr = args.lr
@@ -441,7 +442,7 @@ def train():
   while True:
     step += 1
     x_train, x_mask, x_count, x_len, x_pos_emb_idxs, y_train, y_mask, y_count, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_count, y_sampled_len, y_pos_emb_idxs, batch_size,  eop = data.next_train()
-    target_words += (y_count - batch_size)
+    target_words += (x_count - batch_size)
     trans_logits, noise_logits = model.forward(x_train, x_mask, x_len, x_pos_emb_idxs, y_train, y_mask, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_len)
     trans_logits = trans_logits.view(-1, hparams.src_vocab_size)
     noise_logits = noise_logits.view(-1, hparams.src_vocab_size)
