@@ -142,6 +142,11 @@ parser.add_argument("--relative_pos_c", action="store_true", help="whether to us
 parser.add_argument("--relative_pos_d", action="store_true", help="whether to use relative positional encoding of transformer")
 parser.add_argument("--update_batch", type=int, default="1", help="for how many batches to call backward and optimizer update")
 parser.add_argument("--layernorm_eps", type=float, default=1e-9, help="layernorm eps")
+
+# noise parameters
+parser.add_argument("--word_blank", type=float, default=0.2, help="blank words probability")
+parser.add_argument("--word_dropout", type=float, default=0.2, help="drop words probability")
+parser.add_argument("--word_shuffle", type=float, default=1.5, help="shuffle sentence strength")
 args = parser.parse_args()
 
 if args.bpe_ngram: args.n = None
@@ -335,6 +340,9 @@ def train():
       transformer_relative_pos=args.transformer_relative_pos,
       relative_pos_c=args.relative_pos_c,
       relative_pos_d=args.relative_pos_d,
+      word_blank=args.word_blank,
+      word_dropout=args.word_dropout,
+      word_shuffle=args.word_shuffle
     )
   # build or load model
   print("-" * 80)

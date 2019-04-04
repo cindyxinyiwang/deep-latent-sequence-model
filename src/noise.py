@@ -30,6 +30,7 @@ class NoiseLayer(object):
     def forward(self, words, lengths):
         """perform shuffle, dropout, and blank operations,
         note that the input is required to have bos_index at the start and 
+        eos_index at the end
         Args:
             words (LongTensor): the word ids, (seq_len, batch_size)
             lengths (LongTensor): (batch_size)

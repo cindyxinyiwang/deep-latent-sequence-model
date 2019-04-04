@@ -8,6 +8,7 @@ import torch.nn.functional as F
 import gc
 import numpy as np
 from utils import *
+from noise import NoiseLayer
 
 class MlpAttn(nn.Module):
   def __init__(self, hparams):
@@ -173,6 +174,9 @@ class Seq2Seq(nn.Module):
     # transform encoder state vectors into attention key vector
     self.enc_to_k = nn.Linear(hparams.d_model * 2, hparams.d_model, bias=False)
     self.hparams = hparams
+    self.noise = NoiseLayer(hparams.word_blank, hparams.word_dropout, 
+        hparams.word_shuffle, hparams.pad_id, hparams.unk_id)
+
     if self.hparams.cuda:
       self.enc_to_k = self.enc_to_k.cuda()
 
@@ -187,6 +191,8 @@ class Seq2Seq(nn.Module):
     x_trans, x_trans_mask, x_trans_len, index = self.get_translations(x_train, x_mask, x_len, y_sampled, y_sampled_mask, y_sampled_len)
     index = torch.LongTensor(index.tolist())
     if self.hparams.cuda:
+        self.noise = NoiseLayer()
+
       index = index.cuda()
     x_trans_enc, x_trans_init = self.encoder(x_trans, x_trans_len)
     x_trans_enc = torch.index_select(x_trans_enc, 0, index)
@@ -221,8 +227,14 @@ class Seq2Seq(nn.Module):
     return x_trans, x_mask, x_len, index
 
   def add_noise(self, x_train, x_mask, x_len):
+    x_train = x_train.transpose(0, 1)
+    x_train, x_len = self.noise(x_train, x_len)
+    x_train = x_train.transpose(0, 1)
 
-    return x_train, x_mask, x_len
+    bs, max_len = x_train.size()
+    mask = [[0] * x_len[i].item() + [1] * (max_len - x_len[i].item()) for i in range(bs)]
+    mask = torch.ByteTensor(mask, requires_grad=False, device=self.hparams.device)
+    return x_train, mask, x_len
 
   def translate(self, x_train, x_mask, y, y_mask, y_len, max_len=100, beam_size=2, poly_norm_m=0):
     hyps = []
