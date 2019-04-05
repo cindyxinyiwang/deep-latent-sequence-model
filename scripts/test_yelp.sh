@@ -20,7 +20,7 @@ CUDA_VISIBLE_DEVICES=$1 python src/main.py \
   --trg_vocab  data/yelp/attr.vocab \
   --d_word_vec=128 \
   --d_model=512 \
-  --log_every=2 \
+  --log_every=100 \
   --eval_every=2500 \
   --ppl_thresh=15 \
   --batch_size 32 \
@@ -30,4 +30,7 @@ CUDA_VISIBLE_DEVICES=$1 python src/main.py \
   --dropout 0.3 \
   --max_len 10000 \
   --seed 0 \
+  --word_blank 0.3 \
+  --word_dropout 0.3 \
+  --word_shuffle 1.3 \
   --cuda \
