@@ -15,6 +15,7 @@ class DataUtil(object):
 
     self.trg_i2w, self.trg_w2i = self._build_vocab(self.hparams.trg_vocab)
     self.hparams.trg_vocab_size = len(self.trg_i2w)
+    self.hparams.trg_pad_id = self.trg_w2i["<pad>"]
 
     if not self.hparams.decode:
       self.train_x = []
@@ -89,10 +90,10 @@ class DataUtil(object):
     y_count = sum([len(y) for y in y_train])
     # pad 
     x_train, x_mask, x_count, x_len, x_pos_emb_idxs = self._pad(x_train, self.hparams.pad_id)
-    y_train, y_mask, y_count, y_len, y_pos_emb_idxs = self._pad(y_train, self.hparams.pad_id)
+    y_train, y_mask, y_count, y_len, y_pos_emb_idxs = self._pad(y_train, self.hparams.trg_pad_id)
     # sample some y
     y_sampled = [self.sample_y() for _ in range(batch_size)]
-    y_sampled, y_sampled_mask, y_sampled_count, y_sampled_len, y_sampled_pos_emb_idxs = self._pad(y_sampled, self.hparams.pad_id)
+    y_sampled, y_sampled_mask, y_sampled_count, y_sampled_len, y_sampled_pos_emb_idxs = self._pad(y_sampled, self.hparams.trg_pad_id)
 
     if self.train_index >= self.n_train_batches:
       self.reset_train()
@@ -103,7 +104,7 @@ class DataUtil(object):
 
   def sample_y(self):
     # first how many attrs?
-    attn_num = random.randint(1, self.hparams.trg_vocab_size//2)
+    attn_num = random.randint(1, (self.hparams.trg_vocab_size-1)//2)
     # then select attrs
     y = np.random.binomial(1, 0.5, attn_num)
     y = y + np.arange(attn_num) * 2
@@ -119,7 +120,7 @@ class DataUtil(object):
     x_dev, y_dev = self.sort_by_xlen(x_dev, y_dev)
 
     x_dev, x_mask, x_count, x_len, x_pos_emb_idxs = self._pad(x_dev, self.hparams.pad_id)
-    y_dev, y_mask, y_count, y_len, y_pos_emb_idxs = self._pad(y_dev, self.hparams.pad_id)
+    y_dev, y_mask, y_count, y_len, y_pos_emb_idxs = self._pad(y_dev, self.hparams.trg_pad_id)
 
     if end_index >= self.dev_size:
       eop = True
@@ -147,14 +148,14 @@ class DataUtil(object):
 
     if self.hparams.char_ngram_n > 0 or self.hparams.bpe_ngram:
       x_test, x_mask, x_count, x_len, x_pos_emb_idxs, x_test_char_sparse = self._pad(x_test, self.hparams.pad_id, x_test_char_kv, self.hparams.src_char_vsize)
-      y_test, y_mask, y_count, y_len, y_pos_emb_idxs, y_test_char_sparse = self._pad(y_test, self.hparams.pad_id, y_test_char_kv, self.hparams.trg_char_vsize)
+      y_test, y_mask, y_count, y_len, y_pos_emb_idxs, y_test_char_sparse = self._pad(y_test, self.hparams.trg_pad_id, y_test_char_kv, self.hparams.trg_char_vsize)
     elif self.hparams.char_input is not None:
       x_test, x_mask, x_count, x_len, x_pos_emb_idxs, x_test_char_sparse = self._pad(x_test, self.hparams.pad_id, char_sents=x_test_char_kv)
-      y_test, y_mask, y_count, y_len, y_pos_emb_idxs, y_test_char_sparse = self._pad(y_test, self.hparams.pad_id, char_sents=y_test_char_kv)
+      y_test, y_mask, y_count, y_len, y_pos_emb_idxs, y_test_char_sparse = self._pad(y_test, self.hparams.trg_pad_id, char_sents=y_test_char_kv)
     else:
       x_test_char_sparse, y_test_char_sparse = None, None
       x_test, x_mask, x_count, x_len, x_pos_emb_idxs = self._pad(x_test, self.hparams.pad_id)
-      y_test, y_mask, y_count, y_len, y_pos_emb_idxs = self._pad(y_test, self.hparams.pad_id)
+      y_test, y_mask, y_count, y_len, y_pos_emb_idxs = self._pad(y_test, self.hparams.trg_pad_id)
 
     if end_index >= self.test_size:
       eop = True
@@ -270,6 +271,10 @@ class DataUtil(object):
         i += 1
         if max_vocab_size and i >= max_vocab_size:
           break
+
+    if "<pad>" not in w2i:
+        w2i["<pad>"] = i
+        i2w.append("<pad>")
     #assert i2w[self.hparams.pad_id] == '<pad>'
     #assert i2w[self.hparams.unk_id] == '<unk>'
     #assert i2w[self.hparams.bos_id] == '<s>'

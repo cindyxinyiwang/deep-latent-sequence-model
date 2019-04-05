@@ -252,6 +252,7 @@ def eval(model, data, crit, step, hparams, eval_bleu=False,
 
 def train():
   device = torch.device("cuda" if args.cuda else "cpu")
+  print(args)
   if args.load_model and (not args.reset_hparams):
     print("load hparams..")
     hparams_file_name = os.path.join(args.output_dir, "hparams.pt")

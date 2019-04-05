@@ -8,6 +8,7 @@
 
 ## TODO
 
-* (junxian): noise module with and without bpe encoding
+* ~~(junxian): noise module with and without bpe encoding~~
 * (cindy): bpe preprocessed dataset ?
+* (cindy): add sampling decoding options in back-translation
 
