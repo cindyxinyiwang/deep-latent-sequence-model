@@ -77,34 +77,12 @@ hparams.out_file=out_file
 hparams.nbest=args.nbest
 hparams.decode=True
 
-if hasattr(train_hparams, 'char_temp'):
-  model.hparams.char_temp = train_hparams.char_temp
-else:
-  model.hparams.char_temp = None
-if hasattr(train_hparams, 'src_char_only'):
-  hparams.src_char_only = train_hparams.src_char_only
-else:
-  hparams.src_char_only = False
-if not hasattr(train_hparams, 'n') and (train_hparams.char_ngram_n or train_hparams.char_input):
-  hparams.n = 4 
-if not hasattr(train_hparams, 'single_n') and (train_hparams.char_ngram_n or train_hparams.char_input):
-  hparams.single_n = False 
-if not hasattr(train_hparams, 'bpe_ngram'):
-  hparams.bpe_ngram = False 
-if not hasattr(train_hparams, 'uni'):
-  hparams.uni = False 
-
 model.hparams.cuda = hparams.cuda
 data = DataUtil(hparams=hparams, decode=True)
 filts = [model.hparams.pad_id, model.hparams.eos_id, model.hparams.bos_id]
 
 if not hasattr(model, 'data'):
   model.data = data
-if not hasattr(hparams, 'model_type'):
-  if type(model) == Seq2Seq:
-    hparams.model_type = "seq2seq"
-  elif type(model) == Transformer:
-    hparams.model_type = 'transformer'
 
 if args.debug:
   hparams.add_param("target_word_vocab_size", data.target_word_vocab_size)
@@ -129,12 +107,8 @@ with torch.no_grad():
     x_valid, x_mask, x_count, x_len, x_pos_emb_idxs, y_valid, y_mask, \
             y_count, y_len, y_pos_emb_idxs, batch_size, end_of_epoch, \
             x_valid_char_sparse, y_valid_char_sparse = data.next_test(test_batch_size=1)
-    if hparams.model_type == 'seq2seq':
-      hs = model.translate(
-              x_valid, x_mask, beam_size=args.beam_size, max_len=args.max_len, poly_norm_m=args.poly_norm_m, x_train_char=x_valid_char_sparse, y_train_char=y_valid_char_sparse)
-    elif hparams.model_type == 'transformer': 
-      hs = model.translate(
-              x_valid, x_mask, x_pos_emb_idxs, x_char_sparse_batch=x_valid_char_sparse, beam_size=args.beam_size, max_len=args.max_len, poly_norm_m=args.poly_norm_m)
+    hs = model.translate(
+            x_valid, x_mask, y_valid, y_mask, y_len, beam_size=args.beam_size, max_len=args.max_len, poly_norm_m=args.poly_norm_m)
     hyps.extend(hs)
     for h in hs:
       h_best_words = map(lambda wi: data.trg_i2w_list[0][wi],

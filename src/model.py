@@ -169,9 +169,6 @@ class Seq2Seq(nn.Module):
     self.noise = NoiseLayer(hparams.word_blank, hparams.word_dropout,
         hparams.word_shuffle, hparams.pad_id, hparams.unk_id)
 
-    # if self.hparams.cuda:
-    #   self.enc_to_k = self.enc_to_k.cuda()
-
   def forward(self, x_train, x_mask, x_len, x_pos_emb_idxs, y_train, y_mask, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_len):
     y_len = torch.tensor(y_len, dtype=torch.float, device=self.hparams.device, requires_grad=False)
     y_sampled_len = torch.tensor(y_sampled_len, dtype=torch.float, device=self.hparams.device, 
@@ -214,7 +211,7 @@ class Seq2Seq(nn.Module):
 
   def get_translations(self, x_train, x_mask, x_len, y_sampled, y_sampled_mask, y_sampled_len):
     # list
-    translated_x = self.translate(x_train, x_mask, y_sampled, y_sampled_mask, y_sampled_len, beam_size=1)
+    translated_x = self.translate(x_train, x_mask, y_sampled, y_sampled_mask, y_sampled_len, sampling=True)
     translated_x = [[self.hparams.bos_id]+x+[self.hparams.eos_id] for x in translated_x]
 
 
@@ -252,7 +249,7 @@ class Seq2Seq(nn.Module):
     mask = torch.tensor(mask, dtype=torch.uint8, requires_grad=False, device=self.hparams.device)
     return x_train, mask, x_len, index
 
-  def translate(self, x_train, x_mask, y, y_mask, y_len, max_len=100, beam_size=2, poly_norm_m=0):
+  def translate(self, x_train, x_mask, y, y_mask, y_len, max_len=100, beam_size=2, poly_norm_m=0, sampling=False):
     hyps = []
     batch_size = x_train.size(0)
     for i in range(batch_size):
@@ -261,9 +258,39 @@ class Seq2Seq(nn.Module):
       y_i = y[i,:].unsqueeze(0)
       y_i_mask = y_mask[i,:].unsqueeze(0)
       y_i_len = y_len[i].unsqueeze(0)
-      hyp = self.translate_sent(x, mask, y_i, y_i_mask, y_i_len, max_len=max_len, beam_size=beam_size, poly_norm_m=poly_norm_m)[0]
+      if sampling:
+        hyp = self.sampling_translate(x, mask, y_i, y_i_mask, y_i_len, max_len=max_len)
+      else:
+        hyp = self.translate_sent(x, mask, y_i, y_i_mask, y_i_len, max_len=max_len, beam_size=beam_size, poly_norm_m=poly_norm_m)[0]
       hyps.append(hyp.y[1:-1])
     return hyps
+
+  def sampling_translate(self, x_train, x_mask, y, y_mask, y_len, max_len=100):
+    x_len = [x_train.size(1)]
+    x_enc, dec_init = self.encoder(x_train, x_len)
+    x_enc_k = self.enc_to_k(x_enc)
+    length = 0
+    input_feed = torch.zeros((1, self.hparams.d_model * 2),
+      requires_grad=False, device=self.hparams.device)
+    hyp = Hyp(state=dec_init, y=[self.hparams.bos_id], ctx_tm1=input_feed, score=0.)
+    attr_emb = self.decoder.attr_emb(y).sum(1) / y_len
+    while length < max_len:
+      length += 1
+      y_tm1 = torch.tensor([int(hyp.y[-1])], dtype=torch.long, 
+        requires_grad=False, device=self.hparams.device)
+      y_tm1 = self.decoder.word_emb(y_tm1)
+      y_tm1 = torch.cat([y_tm1, attr_emb], dim=-1)
+
+      logits, dec_state, ctx = self.decoder.step(x_enc, x_enc_k, x_mask, y_tm1, hyp.state, hyp.ctx_tm1, self.data)
+      hyp.state = dec_state
+      hyp.ctx_tm1 = ctx
+
+      sampled_y = torch.distributions.Categorical(logits=logits.data.view(-1)).sample()
+      hyp.y.append(sampled_y.data.item())
+      if hyp.y[-1] == self.hparams.eos_id:
+        break
+
+    return hyp
 
   def translate_sent(self, x_train, x_mask, y, y_mask, y_len, max_len=100, beam_size=5, poly_norm_m=0):
     x_len = [x_train.size(1)]
@@ -273,8 +300,6 @@ class Seq2Seq(nn.Module):
     completed_hyp = []
     input_feed = torch.zeros((1, self.hparams.d_model * 2),
       requires_grad=False, device=self.hparams.device)
-    # if self.hparams.cuda:
-    #   input_feed = input_feed.cuda()
     active_hyp = [Hyp(state=dec_init, y=[self.hparams.bos_id], ctx_tm1=input_feed, score=0.)]
     attr_emb = self.decoder.attr_emb(y).sum(1) / y_len
     while len(completed_hyp) < beam_size and length < max_len:

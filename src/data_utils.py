@@ -138,24 +138,11 @@ class DataUtil(object):
 
     x_test = self.test_x[start_index:end_index]
     y_test = self.test_y[start_index:end_index]
-    if self.hparams.char_ngram_n > 0 or self.hparams.bpe_ngram or self.hparams.char_input is not None:
-      x_test_char_kv = self.test_x_char_kv[start_index:end_index]
-      y_test_char_kv = self.test_y_char_kv[start_index:end_index]
-      x_test, y_test, x_test_char_kv, y_test_char_kv = self.sort_by_xlen(x_test, y_test, x_test_char_kv, y_test_char_kv)
-    else:
-      #pass
-      x_test, y_test = self.sort_by_xlen(x_test, y_test)
 
-    if self.hparams.char_ngram_n > 0 or self.hparams.bpe_ngram:
-      x_test, x_mask, x_count, x_len, x_pos_emb_idxs, x_test_char_sparse = self._pad(x_test, self.hparams.pad_id, x_test_char_kv, self.hparams.src_char_vsize)
-      y_test, y_mask, y_count, y_len, y_pos_emb_idxs, y_test_char_sparse = self._pad(y_test, self.hparams.trg_pad_id, y_test_char_kv, self.hparams.trg_char_vsize)
-    elif self.hparams.char_input is not None:
-      x_test, x_mask, x_count, x_len, x_pos_emb_idxs, x_test_char_sparse = self._pad(x_test, self.hparams.pad_id, char_sents=x_test_char_kv)
-      y_test, y_mask, y_count, y_len, y_pos_emb_idxs, y_test_char_sparse = self._pad(y_test, self.hparams.trg_pad_id, char_sents=y_test_char_kv)
-    else:
-      x_test_char_sparse, y_test_char_sparse = None, None
-      x_test, x_mask, x_count, x_len, x_pos_emb_idxs = self._pad(x_test, self.hparams.pad_id)
-      y_test, y_mask, y_count, y_len, y_pos_emb_idxs = self._pad(y_test, self.hparams.trg_pad_id)
+    x_test, y_test = self.sort_by_xlen(x_test, y_test)
+
+    x_test, x_mask, x_count, x_len, x_pos_emb_idxs = self._pad(x_test, self.hparams.pad_id)
+    y_test, y_mask, y_count, y_len, y_pos_emb_idxs = self._pad(y_test, self.hparams.trg_pad_id)
 
     if end_index >= self.test_size:
       eop = True
@@ -164,7 +151,7 @@ class DataUtil(object):
       eop = False
       self.test_index += batch_size
 
-    return x_test, x_mask, x_count, x_len, x_pos_emb_idxs, y_test, y_mask, y_count, y_len, y_pos_emb_idxs, batch_size, eop, x_test_char_sparse, y_test_char_sparse
+    return x_test, x_mask, x_count, x_len, x_pos_emb_idxs, y_test, y_mask, y_count, y_len, y_pos_emb_idxs, batch_size, eop
   
   def sort_by_xlen(self, x, y, x_char_kv=None, y_char_kv=None, file_index=None, descend=True):
     x = np.array(x)

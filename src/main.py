@@ -197,22 +197,12 @@ def eval(model, data, crit, step, hparams, eval_bleu=False,
       break
   # BLEU eval
   if eval_bleu:
-    #x_valid = data.dev_x
-    #x_dev_char, y_dev_char = data.get_trans_char(data.dev_x_char_kv, data.src_char_vsize), data.get_trans_char(data.dev_y_char_kv, data.trg_char_vsize)
-    #hyps = model.translate(
-    #      x_valid, beam_size=args.beam_size, max_len=args.max_trans_len, poly_norm_m=args.poly_norm_m, x_train_char=x_dev_char, y_train_char=y_dev_char)
     hyps = []
     while True:
       gc.collect()
-      x_valid, x_mask, x_count, x_len, x_pos_emb_idxs, y_valid, y_mask, \
-              y_count, y_len, y_pos_emb_idxs, batch_size, end_of_epoch, \
-              x_valid_char_sparse, y_valid_char_sparse = data.next_dev(dev_batch_size=1)
-      if args.model_type == 'seq2seq':
-        hs = model.translate(
-                x_valid, x_mask, beam_size=args.beam_size, max_len=args.max_trans_len, poly_norm_m=args.poly_norm_m, x_train_char=x_valid_char_sparse, y_train_char=y_valid_char_sparse)
-      elif args.model_type == 'transformer': 
-        hs = model.translate(
-                x_valid, x_mask, x_pos_emb_idxs, x_char_sparse_batch=x_valid_char_sparse, beam_size=args.beam_size, max_len=args.max_trans_len, poly_norm_m=args.poly_norm_m)
+      x_valid, x_mask, x_count, x_len, x_pos_emb_idxs, y_valid, y_mask, y_count, y_len, y_pos_emb_idxs, batch_size, end_of_epoch, x_valid_char_sparse, y_valid_char_sparse = data.next_dev(dev_batch_size=valid_batch_size)
+      hs = model.translate(
+              x_valid, x_mask, y_valid, y_mask, y_len, beam_size=args.beam_size, max_len=args.max_trans_len, poly_norm_m=args.poly_norm_m)
       hyps.extend(hs)
       if end_of_epoch:
         break
