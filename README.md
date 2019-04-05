@@ -12,3 +12,6 @@
 * (cindy): bpe preprocessed dataset ?
 * (cindy): add sampling decoding options in back-translation
 
+
+## Update Notes
+* (junxian) 04/05: concatenate attribute embedding to word embedding at EACH time stamp
