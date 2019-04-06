@@ -474,7 +474,7 @@ def train():
         s = (step / args.update_batch) % args.lr_dec_steps
         lr = args.lr_min + 0.5*(args.lr_max-args.lr_min)*(1+np.cos(s*np.pi/args.lr_dec_steps))
         set_lr(optim, lr)
-      tr_loss.div_(update_batch_size)
+      tr_loss = torch.div(tr_loss, update_batch_size)
       tr_loss.backward()
       #grad_norm = grad_clip(trainable_params, grad_bound=args.clip_grad)
       grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip_grad)

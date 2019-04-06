@@ -108,7 +108,7 @@ with torch.no_grad():
             y_count, y_len, y_pos_emb_idxs, batch_size, end_of_epoch, \
             x_valid_char_sparse, y_valid_char_sparse = data.next_test(test_batch_size=1)
     hs = model.translate(
-            x_valid, x_mask, y_valid, y_mask, y_len, beam_size=args.beam_size, max_len=args.max_len, poly_norm_m=args.poly_norm_m)
+            x_valid, x_mask, x_len, y_valid, y_mask, y_len, beam_size=args.beam_size, max_len=args.max_len, poly_norm_m=args.poly_norm_m)
     hyps.extend(hs)
     for h in hs:
       h_best_words = map(lambda wi: data.trg_i2w_list[0][wi],

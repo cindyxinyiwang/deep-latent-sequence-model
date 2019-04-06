@@ -51,6 +51,7 @@ class Encoder(nn.Module):
 
     self.layer = nn.LSTM(self.hparams.d_word_vec,
                          self.hparams.d_model,
+                         batch_first=True,
                          bidirectional=True,
                          dropout=hparams.dropout)
 
@@ -70,15 +71,16 @@ class Encoder(nn.Module):
       enc_output: Tensor of size [batch_size, max_len, d_model].
     """
     batch_size, max_len = x_train.size()
-    x_train = x_train.transpose(0, 1)
+    # x_train = x_train.transpose(0, 1)
     # [batch_size, max_len, d_word_vec]
     word_emb = self.word_emb(x_train)
     word_emb = self.dropout(word_emb)
-    packed_word_emb = pack_padded_sequence(word_emb, x_len)
+    packed_word_emb = pack_padded_sequence(word_emb, x_len, batch_first=True)
     enc_output, (ht, ct) = self.layer(packed_word_emb)
-    enc_output, _ = pad_packed_sequence(enc_output,  padding_value=self.hparams.pad_id)
+    enc_output, _ = pad_packed_sequence(enc_output, batch_first=True, 
+      padding_value=self.hparams.pad_id)
     #enc_output, (ht, ct) = self.layer(word_emb)
-    enc_output = enc_output.permute(1, 0, 2)
+    # enc_output = enc_output.permute(1, 0, 2)
 
     dec_init_cell = self.bridge(torch.cat([ct[0], ct[1]], 1))
     dec_init_state = F.tanh(dec_init_cell)
@@ -167,7 +169,7 @@ class Seq2Seq(nn.Module):
     self.enc_to_k = nn.Linear(hparams.d_model * 2, hparams.d_model, bias=False)
     self.hparams = hparams
     self.noise = NoiseLayer(hparams.word_blank, hparams.word_dropout,
-        hparams.word_shuffle, hparams.pad_id, hparams.unk_id)
+        hparams.word_shuffle, hparams.pad_id, hparams.unk_id, hparams.eos_id)
 
   def forward(self, x_train, x_mask, x_len, x_pos_emb_idxs, y_train, y_mask, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_len):
     y_len = torch.tensor(y_len, dtype=torch.float, device=self.hparams.device, requires_grad=False)
@@ -211,7 +213,7 @@ class Seq2Seq(nn.Module):
 
   def get_translations(self, x_train, x_mask, x_len, y_sampled, y_sampled_mask, y_sampled_len):
     # list
-    translated_x = self.translate(x_train, x_mask, y_sampled, y_sampled_mask, y_sampled_len, sampling=True)
+    translated_x = self.translate(x_train, x_mask, x_len, y_sampled, y_sampled_mask, y_sampled_len, sampling=True)
     translated_x = [[self.hparams.bos_id]+x+[self.hparams.eos_id] for x in translated_x]
 
 
@@ -249,7 +251,11 @@ class Seq2Seq(nn.Module):
     mask = torch.tensor(mask, dtype=torch.uint8, requires_grad=False, device=self.hparams.device)
     return x_train, mask, x_len, index
 
-  def translate(self, x_train, x_mask, y, y_mask, y_len, max_len=100, beam_size=2, poly_norm_m=0, sampling=False):
+  def translate(self, x_train, x_mask, x_len, y, y_mask, y_len, max_len=100, beam_size=2, poly_norm_m=0, sampling=False):
+    if sampling:
+        hyps = self.sampling_translate(x_train, x_mask, x_len, y, y_mask, y_len, max_len=max_len)
+        return hyps
+
     hyps = []
     batch_size = x_train.size(0)
     for i in range(batch_size):
@@ -258,26 +264,38 @@ class Seq2Seq(nn.Module):
       y_i = y[i,:].unsqueeze(0)
       y_i_mask = y_mask[i,:].unsqueeze(0)
       y_i_len = y_len[i].unsqueeze(0)
-      if sampling:
-        hyp = self.sampling_translate(x, mask, y_i, y_i_mask, y_i_len, max_len=max_len)
-      else:
-        hyp = self.translate_sent(x, mask, y_i, y_i_mask, y_i_len, max_len=max_len, beam_size=beam_size, poly_norm_m=poly_norm_m)[0]
+      # if sampling:
+      #   hyp = self.sampling_translate(x, mask, y_i, y_i_mask, y_i_len, max_len=max_len)
+      # else:
+      hyp = self.translate_sent(x, mask, [x_len[i]], y_i, y_i_mask, y_i_len, max_len=max_len, beam_size=beam_size, poly_norm_m=poly_norm_m)[0]
       hyps.append(hyp.y[1:-1])
     return hyps
 
-  def sampling_translate(self, x_train, x_mask, y, y_mask, y_len, max_len=100):
-    x_len = [x_train.size(1)]
+  def sampling_translate(self, x_train, x_mask, x_len, y, y_mask, y_len, max_len=100):
+    batch_size = x_train.size(0)
+
+    # x_enc: (batch, seq_len, 2 * d_model)
     x_enc, dec_init = self.encoder(x_train, x_len)
+
+    # (batch, seq_len, d_model)
     x_enc_k = self.enc_to_k(x_enc)
     length = 0
-    input_feed = torch.zeros((1, self.hparams.d_model * 2),
+    input_feed = torch.zeros((batch_size, self.hparams.d_model * 2),
       requires_grad=False, device=self.hparams.device)
-    hyp = Hyp(state=dec_init, y=[self.hparams.bos_id], ctx_tm1=input_feed, score=0.)
-    attr_emb = self.decoder.attr_emb(y).sum(1) / y_len
-    while length < max_len:
+    decoder_input = torch.tensor([self.hparams.bos_id] * batch_size, 
+      dtype=torch.long, device=self.hparams.device)
+    hyp = Hyp(state=dec_init, y=decoder_input, ctx_tm1=input_feed, score=0.)
+    attr_emb = self.decoder.attr_emb(y).sum(1) / y_len.unsqueeze(1)
+    mask = torch.ones((batch_size), dtype=torch.uint8, device=self.hparams.device)
+    end_symbol = torch.tensor([self.hparams.eos_id] * batch_size, 
+      dtype=torch.long, device=self.hparams.device)
+
+    decoded_batch = [[] for _ in range(batch_size)]
+    while mask.sum().item() != 0 and length < max_len:
       length += 1
-      y_tm1 = torch.tensor([int(hyp.y[-1])], dtype=torch.long, 
-        requires_grad=False, device=self.hparams.device)
+      y_tm1 = hyp.y
+
+      # (batch, d_word_vec) --> (batch, 2 * d_word_vec)
       y_tm1 = self.decoder.word_emb(y_tm1)
       y_tm1 = torch.cat([y_tm1, attr_emb], dim=-1)
 
@@ -285,15 +303,18 @@ class Seq2Seq(nn.Module):
       hyp.state = dec_state
       hyp.ctx_tm1 = ctx
 
-      sampled_y = torch.distributions.Categorical(logits=logits.data.view(-1)).sample()
-      hyp.y.append(sampled_y.data.item())
-      if hyp.y[-1] == self.hparams.eos_id:
-        break
+      sampled_y = torch.distributions.Categorical(logits=logits).sample()
+      hyp.y = sampled_y
 
-    return hyp
+      mask = torch.mul((sampled_y != end_symbol), mask)
+      
+      for i in range(batch_size):
+        if mask[i].item():
+          decoded_batch[i].append(sampled_y[i].item())
 
-  def translate_sent(self, x_train, x_mask, y, y_mask, y_len, max_len=100, beam_size=5, poly_norm_m=0):
-    x_len = [x_train.size(1)]
+    return decoded_batch
+
+  def translate_sent(self, x_train, x_mask, x_len, y, y_mask, y_len, max_len=100, beam_size=5, poly_norm_m=0):
     x_enc, dec_init = self.encoder(x_train, x_len)
     x_enc_k = self.enc_to_k(x_enc)
     length = 0

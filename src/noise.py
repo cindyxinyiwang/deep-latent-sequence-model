@@ -10,7 +10,7 @@ class NoiseLayer(nn.Module):
     https://github.com/facebookresearch/UnsupervisedMT/blob/master/NMT/src/trainer.py
     """
     def __init__(self, word_blank, word_dropout, word_shuffle,
-                 pad_index, blank_index, bpe_encode=False):
+                 pad_index, blank_index, eos_index, bpe_encode=False):
         """
         Args:
             word_blank (float): blank out probability, 0 to disable
@@ -27,6 +27,7 @@ class NoiseLayer(nn.Module):
 
         self.pad_index = pad_index
         self.blank_index = blank_index
+        self.eos_index = eos_index
 
     def forward(self, words, lengths):
         """perform shuffle, dropout, and blank operations,
@@ -52,8 +53,6 @@ class NoiseLayer(nn.Module):
             return x, l
         assert 0 < self.blank_prob < 1
 
-        eos_index = x[-1, 0].item()
-
         # define words to blank
         # bos_index = self.bos_index[lang_id]
         # assert (x[0] == bos_index).sum() == l.size(0)
@@ -71,7 +70,7 @@ class NoiseLayer(nn.Module):
             words = x[:l[i] - 1, i].tolist()
             # randomly blank words from the input
             new_s = [w if keep[j, i] else self.blank_index for j, w in enumerate(words)]
-            new_s.append(eos_index)
+            new_s.append(self.eos_index)
 
             sentences.append(new_s)
         # re-construct input
@@ -91,8 +90,6 @@ class NoiseLayer(nn.Module):
             return x, l
         assert 0 < self.dropout_prob < 1
 
-        eos_index = x[-1, 0].item()
-
         # define words to drop
         # bos_index = self.bos_index[lang_id]
         # assert (x[0] == bos_index).sum() == l.size(0)
@@ -107,14 +104,14 @@ class NoiseLayer(nn.Module):
         sentences = []
         lengths = []
         for i in range(len(l)):
-            assert x[l[i] - 1, i] == eos_index
+            assert x[l[i] - 1, i] == self.eos_index
             words = x[:l[i] - 1, i].tolist()
             # randomly drop words from the input
             new_s = [w for j, w in enumerate(words) if keep[j, i]]
             # we need to have at least one word in the sentence (more than the start / end sentence symbols)
             if len(new_s) == 1:
                 new_s.append(words[np.random.randint(1, len(words))])
-            new_s.append(eos_index)
+            new_s.append(self.eos_index)
 
             sentences.append(new_s)
             lengths.append(len(new_s))
