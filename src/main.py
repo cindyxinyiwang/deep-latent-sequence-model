@@ -197,22 +197,12 @@ def eval(model, data, crit, step, hparams, eval_bleu=False,
       break
   # BLEU eval
   if eval_bleu:
-    #x_valid = data.dev_x
-    #x_dev_char, y_dev_char = data.get_trans_char(data.dev_x_char_kv, data.src_char_vsize), data.get_trans_char(data.dev_y_char_kv, data.trg_char_vsize)
-    #hyps = model.translate(
-    #      x_valid, beam_size=args.beam_size, max_len=args.max_trans_len, poly_norm_m=args.poly_norm_m, x_train_char=x_dev_char, y_train_char=y_dev_char)
     hyps = []
     while True:
       gc.collect()
-      x_valid, x_mask, x_count, x_len, x_pos_emb_idxs, y_valid, y_mask, \
-              y_count, y_len, y_pos_emb_idxs, batch_size, end_of_epoch, \
-              x_valid_char_sparse, y_valid_char_sparse = data.next_dev(dev_batch_size=1)
-      if args.model_type == 'seq2seq':
-        hs = model.translate(
-                x_valid, x_mask, beam_size=args.beam_size, max_len=args.max_trans_len, poly_norm_m=args.poly_norm_m, x_train_char=x_valid_char_sparse, y_train_char=y_valid_char_sparse)
-      elif args.model_type == 'transformer': 
-        hs = model.translate(
-                x_valid, x_mask, x_pos_emb_idxs, x_char_sparse_batch=x_valid_char_sparse, beam_size=args.beam_size, max_len=args.max_trans_len, poly_norm_m=args.poly_norm_m)
+      x_valid, x_mask, x_count, x_len, x_pos_emb_idxs, y_valid, y_mask, y_count, y_len, y_pos_emb_idxs, batch_size, end_of_epoch, x_valid_char_sparse, y_valid_char_sparse = data.next_dev(dev_batch_size=valid_batch_size)
+      hs = model.translate(
+              x_valid, x_mask, y_valid, y_mask, y_len, beam_size=args.beam_size, max_len=args.max_trans_len, poly_norm_m=args.poly_norm_m)
       hyps.extend(hs)
       if end_of_epoch:
         break
@@ -252,6 +242,7 @@ def eval(model, data, crit, step, hparams, eval_bleu=False,
 
 def train():
   device = torch.device("cuda" if args.cuda else "cpu")
+  print(args)
   if args.load_model and (not args.reset_hparams):
     print("load hparams..")
     hparams_file_name = os.path.join(args.output_dir, "hparams.pt")
@@ -440,7 +431,7 @@ def train():
   print("-" * 80)
   print("start training...")
   start_time = log_start_time = time.time()
-  target_words, total_loss, total_corrects = 0, 0, 0
+  target_words, total_loss, total_noise_corrects, total_transfer_corrects = 0, 0, 0, 0
   target_rules, target_total, target_eos = 0, 0, 0
   total_word_loss, total_rule_loss, total_eos_loss = 0, 0, 0
   model.train()
@@ -456,9 +447,11 @@ def train():
     noise_logits = noise_logits.view(-1, hparams.src_vocab_size)
     labels = x_train.contiguous().view(-1)
 
-    cur_tr_loss, cur_tr_acc = get_performance(crit, trans_logits, noise_logits, 0.5, labels, hparams)
+    cur_tr_loss, cur_tr_acc, cur_tr_transfer_acc = get_performance(crit, trans_logits, 
+        noise_logits, 0.5, labels, hparams)
     total_loss += cur_tr_loss.item()
-    total_corrects += cur_tr_acc.item()
+    total_noise_corrects += cur_tr_acc.item()
+    total_transfer_corrects += cur_tr_transfer_acc.item()
     if tr_loss is None:
       tr_loss = cur_tr_loss
     else:
@@ -481,7 +474,7 @@ def train():
         s = (step / args.update_batch) % args.lr_dec_steps
         lr = args.lr_min + 0.5*(args.lr_max-args.lr_min)*(1+np.cos(s*np.pi/args.lr_dec_steps))
         set_lr(optim, lr)
-      tr_loss.div_(update_batch_size)
+      tr_loss = torch.div(tr_loss, update_batch_size)
       tr_loss.backward()
       #grad_norm = grad_clip(trainable_params, grad_bound=args.clip_grad)
       grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip_grad)
@@ -504,7 +497,8 @@ def train():
       log_string += " |g|={0:<5.2f}".format(grad_norm)
 
       log_string += " ppl={0:<8.2f}".format(np.exp(total_loss / target_words))
-      log_string += " acc={0:<5.4f}".format(total_corrects / target_words)
+      log_string += " noise acc={0:<5.4f}".format(total_noise_corrects / target_words)
+      log_string += " transfer acc={0:<5.4f}".format(total_transfer_corrects / target_words)
 
       log_string += " wpm(k)={0:<5.2f}".format(target_words / (1000 * elapsed))
       log_string += " time(min)={0:<5.2f}".format(since_start)

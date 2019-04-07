@@ -27,9 +27,11 @@ def get_performance(crit, trans_logits, noise_logits, tau, labels, hparams, sum_
   trans_loss = crit(trans_logits, labels)
   noise_loss = crit(noise_logits, labels)
   _, preds = torch.max(noise_logits, dim=1)
+  _, trans_preds = torch.max(trans_logits, dim=1)
   acc = torch.eq(preds, labels).int().masked_fill_(mask, 0).sum()
+  trans_acc = torch.eq(trans_preds, labels).int().masked_fill_(mask, 0).sum()
   loss = trans_loss.sum() + tau * noise_loss.sum()
-  return loss, acc
+  return loss, acc, trans_acc
 
 def count_params(params):
   num_params = sum(p.data.nelement() for p in params)

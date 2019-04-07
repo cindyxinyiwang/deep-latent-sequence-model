@@ -7,27 +7,30 @@
 export PYTHONPATH="$(pwd)"
 # export CUDA_VISIBLE_DEVICES="0"
 
-CUDA_VISIBLE_DEVICES=$1 python -m pdb src/main.py \
+CUDA_VISIBLE_DEVICES=$1 python src/main.py \
   --clean_mem_every 5 \
   --reset_output_dir \
-  --output_dir="outputs_test/test/" \
+  --output_dir="outputs_yelp/yelp/" \
   --data_path data/test/ \
-  --train_src_file data/test/train.txt \
-  --train_trg_file data/test/train.attr \
-  --dev_src_file data/test/train.txt \
-  --dev_trg_file data/test/train.attr \
-  --src_vocab  data/test/train.txt.vocab \
-  --trg_vocab  data/test/train.attr.vocab \
+  --train_src_file data/yelp/train.txt \
+  --train_trg_file data/yelp/train.attr \
+  --dev_src_file data/yelp/dev.txt \
+  --dev_trg_file data/yelp/dev.attr \
+  --src_vocab  data/yelp/text.vocab \
+  --trg_vocab  data/yelp/attr.vocab \
   --d_word_vec=128 \
   --d_model=512 \
-  --log_every=2 \
+  --log_every=100 \
   --eval_every=2500 \
   --ppl_thresh=15 \
-  --batch_size 2 \
+  --batch_size 32 \
   --valid_batch_size=7 \
   --patience 5 \
   --lr_dec 0.8 \
   --dropout 0.3 \
   --max_len 10000 \
   --seed 0 \
+  --word_blank 0.3 \
+  --word_dropout 0.3 \
+  --word_shuffle 1.3 \
   --cuda \
