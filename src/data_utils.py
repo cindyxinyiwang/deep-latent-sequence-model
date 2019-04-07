@@ -122,6 +122,8 @@ class DataUtil(object):
     x_dev, x_mask, x_count, x_len, x_pos_emb_idxs = self._pad(x_dev, self.hparams.pad_id)
     y_dev, y_mask, y_count, y_len, y_pos_emb_idxs = self._pad(y_dev, self.hparams.trg_pad_id)
 
+    y_neg = 1 - y_dev
+
     if end_index >= self.dev_size:
       eop = True
       self.dev_index = 0
@@ -129,7 +131,7 @@ class DataUtil(object):
       eop = False
       self.dev_index += batch_size
 
-    return x_dev, x_mask, x_count, x_len, x_pos_emb_idxs, y_dev, y_mask, y_count, y_len, y_pos_emb_idxs, batch_size, eop
+    return x_dev, x_mask, x_count, x_len, x_pos_emb_idxs, y_dev, y_mask, y_count, y_len, y_pos_emb_idxs, y_neg, batch_size, eop
 
   def next_test(self, test_batch_size=10):
     start_index = self.test_index
@@ -144,6 +146,8 @@ class DataUtil(object):
     x_test, x_mask, x_count, x_len, x_pos_emb_idxs = self._pad(x_test, self.hparams.pad_id)
     y_test, y_mask, y_count, y_len, y_pos_emb_idxs = self._pad(y_test, self.hparams.trg_pad_id)
 
+    y_neg = 1 - y_test
+
     if end_index >= self.test_size:
       eop = True
       self.test_index = 0
@@ -151,7 +155,7 @@ class DataUtil(object):
       eop = False
       self.test_index += batch_size
 
-    return x_test, x_mask, x_count, x_len, x_pos_emb_idxs, y_test, y_mask, y_count, y_len, y_pos_emb_idxs, batch_size, eop
+    return x_test, x_mask, x_count, x_len, x_pos_emb_idxs, y_test, y_mask, y_count, y_len, y_pos_emb_idxs, y_neg, batch_size, eop
   
   def sort_by_xlen(self, x, y, x_char_kv=None, y_char_kv=None, file_index=None, descend=True):
     x = np.array(x)

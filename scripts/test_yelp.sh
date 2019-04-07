@@ -24,7 +24,7 @@ CUDA_VISIBLE_DEVICES=$1 python src/main.py \
   --eval_every=2500 \
   --ppl_thresh=15 \
   --batch_size 32 \
-  --valid_batch_size=7 \
+  --valid_batch_size=32 \
   --patience 5 \
   --lr_dec 0.8 \
   --dropout 0.3 \

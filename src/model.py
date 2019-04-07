@@ -122,15 +122,17 @@ class Decoder(nn.Module):
         requires_grad=False, device=self.hparams.device)
     # if self.hparams.cuda:
     #   input_feed = input_feed.cuda()
+
+    # 
     # [batch_size, y_len, d_word_vec]
-    x_emb = self.word_emb(x_train)
+    x_emb = self.word_emb(x_train[:, :-1])
 
     pre_readouts = []
     logits = []
     # init with attr emb
     attr_emb =self.attr_emb(y_train)
     attr_emb = attr_emb.sum(dim=1) / y_len.unsqueeze(1)
-    for t in range(x_max_len):
+    for t in range(x_max_len-1):
       x_emb_tm1 = x_emb[:, t, :]
       x_input = torch.cat([x_emb_tm1, attr_emb, input_feed], dim=1)
 
@@ -263,7 +265,7 @@ class Seq2Seq(nn.Module):
       mask = x_mask[i,:].unsqueeze(0)
       y_i = y[i,:].unsqueeze(0)
       y_i_mask = y_mask[i,:].unsqueeze(0)
-      y_i_len = y_len[i].unsqueeze(0)
+      y_i_len = torch.tensor([y_len[i]], dtype=torch.float, device=self.hparams.device).unsqueeze(0)
       # if sampling:
       #   hyp = self.sampling_translate(x, mask, y_i, y_i_mask, y_i_len, max_len=max_len)
       # else:

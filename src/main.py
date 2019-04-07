@@ -160,6 +160,7 @@ def eval(model, data, crit, step, hparams, eval_bleu=False,
   valid_words = 0
   valid_loss = 0
   valid_acc = 0
+  valid_trans_acc = 0
   n_batches = 0
 
   valid_total = valid_rule_count = valid_word_count = valid_eos_count = 0
@@ -173,7 +174,7 @@ def eval(model, data, crit, step, hparams, eval_bleu=False,
     gc.collect()
 
     # next batch
-    x_valid, x_mask, x_count, x_len, x_pos_emb_idxs, y_valid, y_mask, y_count, y_len, y_pos_emb_idxs, batch_size, end_of_epoch, x_valid_char_sparse, y_valid_char_sparse = data.next_dev(dev_batch_size=valid_batch_size)
+    x_valid, x_mask, x_count, x_len, x_pos_emb_idxs, y_valid, y_mask, y_count, y_len, y_pos_emb_idxs, y_neg, batch_size, end_of_epoch = data.next_dev(dev_batch_size=hparams.batch_size)
     #print(x_valid)
     #print(x_mask)
     #print(y_valid)
@@ -183,15 +184,19 @@ def eval(model, data, crit, step, hparams, eval_bleu=False,
     # word count
     valid_words += x_count
 
-    logits = model.forward(
+    trans_logits, noise_logits = model.forward(
       x_valid, x_mask, x_len, x_pos_emb_idxs,
-      y_valid[:,:-1], y_mask[:,:-1], y_len, y_pos_emb_idxs, x_valid_char_sparse, y_valid_char_sparse, file_idx=[0 for _ in range(batch_size)])
-    logits = logits.view(-1, hparams.trg_vocab_size)
-    labels = y_valid[:,1:].contiguous().view(-1)
-    val_loss, val_acc = get_performance(crit, logits, labels, hparams)
+      y_valid, y_mask, y_len, y_pos_emb_idxs, 
+      y_neg,  y_mask, y_len)
+    trans_logits = trans_logits.view(-1, hparams.src_vocab_size)
+    noise_logits = noise_logits.view(-1, hparams.src_vocab_size)
+    labels = x_valid[:,1:].contiguous().view(-1)
+    val_loss, val_acc, val_transfer_acc = get_performance(crit, trans_logits, noise_logits, 
+        0.5, labels, hparams)
     n_batches += 1
     valid_loss += val_loss.item()
     valid_acc += val_acc.item()
+    valid_trans_acc += val_transfer_acc.item()
     # print("{0:<5d} / {1:<5d}".format(val_acc.data[0], y_count))
     if end_of_epoch:
       break
@@ -220,7 +225,8 @@ def eval(model, data, crit, step, hparams, eval_bleu=False,
   val_ppl = np.exp(valid_loss / valid_words)
   log_string = "val_step={0:<6d}".format(step)
   log_string += " loss={0:<6.2f}".format(valid_loss / valid_words)
-  log_string += " acc={0:<5.4f}".format(valid_acc / valid_words)
+  log_string += " noise acc={0:<5.4f}".format(valid_acc / valid_words)
+  log_string += " transfer acc={0:<5.4f}".format(valid_trans_acc / valid_words)
   log_string += " val_ppl={0:<.2f}".format(val_ppl)
   if eval_bleu:
     out_file.close()
@@ -445,7 +451,9 @@ def train():
     trans_logits, noise_logits = model.forward(x_train, x_mask, x_len, x_pos_emb_idxs, y_train, y_mask, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_len)
     trans_logits = trans_logits.view(-1, hparams.src_vocab_size)
     noise_logits = noise_logits.view(-1, hparams.src_vocab_size)
-    labels = x_train.contiguous().view(-1)
+
+    # not predicting the start symbol
+    labels = x_train[:, 1:].contiguous().view(-1)
 
     cur_tr_loss, cur_tr_acc, cur_tr_transfer_acc = get_performance(crit, trans_logits, 
         noise_logits, 0.5, labels, hparams)
@@ -516,7 +524,7 @@ def train():
       based_on_bleu = args.eval_bleu and best_val_ppl is not None and best_val_ppl <= args.ppl_thresh
       if args.dev_zero: based_on_bleu = True
       with torch.no_grad():
-        val_ppl, val_bleu = eval(model, data, crit, step, hparams, eval_bleu=based_on_bleu, valid_batch_size=args.valid_batch_size, tr_logits=logits)	
+        val_ppl, val_bleu = eval(model, data, crit, step, hparams, eval_bleu=based_on_bleu, valid_batch_size=args.valid_batch_size)	
       if based_on_bleu:
         if best_val_bleu is None or best_val_bleu <= val_bleu:
           save = True 
@@ -526,22 +534,22 @@ def train():
           save = False
           cur_attempt += 1
       else:
-      	if best_val_ppl is None or best_val_ppl >= val_ppl:
+        if best_val_ppl is None or best_val_ppl >= val_ppl:
           save = True
           best_val_ppl = val_ppl
           cur_attempt = 0 
-      	else:
+        else:
           save = False
           cur_attempt += 1
       if save or args.always_save:
-      	save_checkpoint([step, best_val_ppl, best_val_bleu, cur_attempt, lr], 
-      		             model, optim, hparams, args.output_dir)
+        save_checkpoint([step, best_val_ppl, best_val_bleu, cur_attempt, lr], 
+                        model, optim, hparams, args.output_dir)
       elif not args.lr_schedule and step >= hparams.n_warm_ups:
         lr = lr * args.lr_dec
         set_lr(optim, lr)
       # reset counter after eval
       log_start_time = time.time()
-      target_words = total_corrects = total_loss = 0
+      target_words = total_noise_corrects = total_transfer_corrects = total_loss = 0
       target_rules = target_total = target_eos = 0
       total_word_loss = total_rule_loss = total_eos_loss = 0
     if args.patience >= 0:
