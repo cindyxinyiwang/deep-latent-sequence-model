@@ -4,7 +4,9 @@
 
 * `data/yelp` is the preprocessed Yelp dataset which meets our format requirement. `data/yelp_shen` is the original dataset used in https://arxiv.org/abs/1705.09655
 
-
+## Requirements
+* Python 3, PyTorch 0.4
+* [tqdm](https://github.com/tqdm/tqdm)
 
 ## TODO
 

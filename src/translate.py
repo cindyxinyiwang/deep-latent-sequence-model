@@ -12,6 +12,7 @@ import time
 
 import numpy as np
 
+from tqdm import tqdm
 from data_utils import DataUtil
 from hparams import *
 from utils import *
@@ -100,12 +101,15 @@ if args.debug:
 else:
   y_test = None
 #print(x_test)
+test_batch_size = 1
+print("start translate")
+pbar = tqdm(total=data.test_size)
 with torch.no_grad():
   hyps = []
   while True:
     gc.collect()
     x_valid, x_mask, x_count, x_len, x_pos_emb_idxs, y_valid, y_mask, \
-            y_count, y_len, y_pos_emb_idxs, y_neg, batch_size, end_of_epoch = data.next_test(test_batch_size=1)
+            y_count, y_len, y_pos_emb_idxs, y_neg, batch_size, end_of_epoch = data.next_test(test_batch_size=test_batch_size)
     hs = model.translate(
             x_valid, x_mask, x_len, y_neg, y_mask, y_len, beam_size=args.beam_size, max_len=args.max_len, poly_norm_m=args.poly_norm_m)
     hyps.extend(hs)
@@ -120,7 +124,8 @@ with torch.no_grad():
       line = line.strip()
       out_file.write(line + '\n')
       out_file.flush()
-
+      
+    pbar.update(test_batch_size)
     if end_of_epoch:
       break    
 
