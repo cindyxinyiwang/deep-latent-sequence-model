@@ -60,7 +60,7 @@ class Encoder(nn.Module):
 
     self.dropout = nn.Dropout(self.hparams.dropout)
 
-  def forward(self, x_train, x_len):
+  def forward(self, x_train, x_len, gumbel_softmax=False):
     """Performs a forward pass.
     Args:
       x_train: Torch Tensor of size [batch_size, max_len]
@@ -70,10 +70,16 @@ class Encoder(nn.Module):
     Returns:
       enc_output: Tensor of size [batch_size, max_len, d_model].
     """
-    batch_size, max_len = x_train.size()
-    # x_train = x_train.transpose(0, 1)
-    # [batch_size, max_len, d_word_vec]
-    word_emb = self.word_emb(x_train)
+
+    if not gumbel_softmax:
+      batch_size, max_len = x_train.size()
+      # x_train = x_train.transpose(0, 1)
+      # [batch_size, max_len, d_word_vec]
+      word_emb = self.word_emb(x_train)
+    else:
+      batch_size, max_len, _ = x_train.size()
+      word_emb = x_train @ self.word_emb.weight
+
     word_emb = self.dropout(word_emb)
     packed_word_emb = pack_padded_sequence(word_emb, x_len, batch_first=True)
     enc_output, (ht, ct) = self.layer(packed_word_emb)
@@ -183,12 +189,14 @@ class Seq2Seq(nn.Module):
     # index is a list which represents original position in this batch after reordering 
     # translated sentences
     # on-the-fly back translation
-    with torch.no_grad():
-      x_trans, x_trans_mask, x_trans_len, index = self.get_translations(x_train, x_mask, x_len, y_sampled, y_sampled_mask, y_sampled_len)
+    if not self.hparams.gumbel_softmax:
+      with torch.no_grad():
+        x_trans, x_trans_mask, x_trans_len, index = self.get_translations(x_train, x_mask, x_len, y_sampled, y_sampled_mask, y_sampled_len)
+      index = torch.tensor(index.copy(), dtype=torch.long, requires_grad=False, device=self.hparams.device)
+    else:
+      x_trans, x_trans_mask, x_trans_len, index = self.get_soft_translations(x_train, x_mask, x_len, y_sampled, y_sampled_mask, y_sampled_len)
 
-    index = torch.tensor(index.copy(), dtype=torch.long, requires_grad=False, device=self.hparams.device)
-
-    x_trans_enc, x_trans_init = self.encoder(x_trans, x_trans_len)
+    x_trans_enc, x_trans_init = self.encoder(x_trans, x_trans_len, gumbel_softmax=True)
     x_trans_enc = torch.index_select(x_trans_enc, 0, index)
     new_x_trans_init = []
     new_x_trans_init.append(torch.index_select(x_trans_init[0], 0, index))
@@ -226,6 +234,101 @@ class Seq2Seq(nn.Module):
     translated_x = translated_x[index].tolist()
     x_trans, x_mask, x_count, x_len, _ = self.data._pad(translated_x, self.hparams.pad_id)
     return x_trans, x_mask, x_len, index
+
+  def get_soft_translations(self, x_train, x_mask, x_len, 
+                            y_sampled, y_sampled_mask, y_sampled_len, max_len=100):
+    batch_size = x_train.size(0)
+
+    # x_enc: (batch, seq_len, 2 * d_model)
+    x_enc, dec_init = self.encoder(x_train, x_len)
+
+    # (batch, seq_len, d_model)
+    x_enc_k = self.enc_to_k(x_enc)
+    length = 0
+    input_feed = torch.zeros((batch_size, self.hparams.d_model * 2),
+      requires_grad=False, device=self.hparams.device)
+
+    attr_emb = self.decoder.attr_emb(y_sampled).sum(1) / y_sampled_len.unsqueeze(1)
+    mask = torch.ones((batch_size), dtype=torch.uint8, device=self.hparams.device)
+    end_symbol = torch.zeros((batch_size, self.hparams.src_vocab_size),
+      dtype=torch.float, requires_grad=False, device=self.hparams.device)
+    end_symbol[:, self.hparams.eos_id] = 1
+
+    pad_vec = torch.zeros((1, self.hparams.src_vocab_size),
+      dtype=torch.float, requires_grad=False, device=self.hparams.device)
+    pad_vec[:, self.hparams.pad_id] = 1
+
+    bos_vec = torch.zeros((1, self.hparams.src_vocab_size),
+      dtype=torch.float, requires_grad=False, device=self.hparams.device)
+    bos_vec[:, self.hparams.bos_id] = 1
+
+    eos_vec = torch.zeros((1, self.hparams.src_vocab_size),
+      dtype=torch.float, requires_grad=False, device=self.hparams.device)
+    eos_vec[:, self.hparams.eos_id] = 1
+
+    decoder_input = bos_vec.expand(batch_size, self.hparams.src_vocab_size)
+    hyp = Hyp(state=dec_init, y=decoder_input, ctx_tm1=input_feed, score=0.)
+
+    decoded_batch = [[bos_vec.clone()] for _ in range(batch_size)]
+    trans_len = [1 for _ in range(batch_size)]
+
+    end_flag = [0 for _ in range(batch_size)]
+    while mask.sum().item() != 0 and length < max_len:
+      length += 1
+      y_tm1 = hyp.y
+
+      # (batch, d_word_vec) --> (batch, 2 * d_word_vec)
+      y_tm1 = y_tm1 @ self.decoder.word_emb.weight
+      y_tm1 = torch.cat([y_tm1, attr_emb], dim=-1)
+
+      # logits: (batch_size, vocab_size)
+      logits, dec_state, ctx = self.decoder.step(x_enc, x_enc_k, x_mask, y_tm1, hyp.state, hyp.ctx_tm1, self.data)
+      hyp.state = dec_state
+      hyp.ctx_tm1 = ctx
+
+      # FloatTensor: (batch_size, vocab_size)
+      sampled_y = F.gumbel_softmax(logits=logits, hard=True)
+      hyp.y = sampled_y
+
+      for i in range(batch_size):
+        if mask[i].item():
+          trans_len[i] += 1
+          decoded_batch[i].append(sampled_y[i].unsqueeze(0))
+          if sampled_y[i, self.hparams.eos_id].item() == 1:
+            end_flag[i] = 1
+        else:
+          decoded_batch[i].append(pad_vec.clone())
+
+      mask = torch.mul((sampled_y != end_symbol).sum(1) > 0, mask)
+
+    if length >= max_len:
+      for i, batch in enumerate(decoded_batch):
+        if end_flag[i] == 0:
+          batch.append(eos_vec.clone())
+          trans_len[i] += 1
+        else:
+          batch.append(pad_vec.clone())
+
+    for i in range(batch_size):
+      decoded_batch[i] = torch.cat(decoded_batch[i], dim=0).unsqueeze(0)
+
+    # (batch_size, seq_len, vocab)
+    x_trans = torch.cat(decoded_batch, dim=0)
+
+    index = np.argsort(trans_len)
+    index = index[::-1]
+    index_t = torch.tensor(index.copy(), dtype=torch.long, requires_grad=False, device=self.hparams.device)    
+
+    x_trans = torch.index_select(x_trans, dim=0, index=index_t)
+    x_len = [trans_len[i] for i in index]
+    max_len = x_trans.size(1)
+
+    x_mask = [[0 if i < length else 1 for i in range(max_len)] for length in x_len]
+    x_mask = torch.tensor(x_mask, dtype=torch.uint8, requires_grad=False, device=self.hparams.device)
+
+    x_count = sum(x_len)
+
+    return x_trans, x_mask, x_len, index_t
 
   def add_noise(self, x_train, x_mask, x_len):
     """
@@ -305,6 +408,7 @@ class Seq2Seq(nn.Module):
       hyp.state = dec_state
       hyp.ctx_tm1 = ctx
 
+      logits = logits / self.hparams.temperature
       sampled_y = torch.distributions.Categorical(logits=logits).sample()
       hyp.y = sampled_y
 

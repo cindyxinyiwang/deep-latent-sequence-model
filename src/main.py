@@ -147,6 +147,11 @@ parser.add_argument("--layernorm_eps", type=float, default=1e-9, help="layernorm
 parser.add_argument("--word_blank", type=float, default=0.2, help="blank words probability")
 parser.add_argument("--word_dropout", type=float, default=0.2, help="drop words probability")
 parser.add_argument("--word_shuffle", type=float, default=1.5, help="shuffle sentence strength")
+
+# sampling parameters
+parser.add_argument("--temperature", type=float, default=1., help="softmax temperature during training, a small value approx greedy decoding")
+parser.add_argument("--gumbel_softmax", action="store_true", help="use gumbel softmax in back-translation")
+
 args = parser.parse_args()
 
 if args.bpe_ngram: args.n = None
@@ -339,7 +344,9 @@ def train():
       relative_pos_d=args.relative_pos_d,
       word_blank=args.word_blank,
       word_dropout=args.word_dropout,
-      word_shuffle=args.word_shuffle
+      word_shuffle=args.word_shuffle,
+      temperature=args.temperature,
+      gumbel_softmax=args.gumbel_softmax
     )
   # build or load model
   print("-" * 80)
