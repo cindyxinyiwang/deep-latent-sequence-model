@@ -110,14 +110,15 @@ class DataUtil(object):
     y = y + np.arange(attn_num) * 2
     return y.tolist()
 
-  def next_dev(self, dev_batch_size=1):
+  def next_dev(self, dev_batch_size=1, sort=True):
     start_index = self.dev_index
     end_index = min(start_index + dev_batch_size, self.dev_size)
     batch_size = end_index - start_index
 
     x_dev = self.dev_x[start_index:end_index]
     y_dev = self.dev_y[start_index:end_index]
-    x_dev, y_dev = self.sort_by_xlen(x_dev, y_dev)
+    if sort:
+      x_dev, y_dev = self.sort_by_xlen(x_dev, y_dev)
 
     x_dev, x_mask, x_count, x_len, x_pos_emb_idxs = self._pad(x_dev, self.hparams.pad_id)
     y_dev, y_mask, y_count, y_len, y_pos_emb_idxs = self._pad(y_dev, self.hparams.trg_pad_id)

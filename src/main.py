@@ -210,14 +210,14 @@ def eval(model, data, crit, step, hparams, eval_bleu=False,
     hyps = []
     while True:
       gc.collect()
-      x_valid, x_mask, x_count, x_len, x_pos_emb_idxs, y_valid, y_mask, y_count, y_len, y_pos_emb_idxs, batch_size, end_of_epoch, x_valid_char_sparse, y_valid_char_sparse = data.next_dev(dev_batch_size=valid_batch_size)
+      x_valid, x_mask, x_count, x_len, x_pos_emb_idxs, y_valid, y_mask, y_count, y_len, y_pos_emb_idxs, y_neg, batch_size, end_of_epoch = data.next_dev(dev_batch_size=1, sort=False)
       hs = model.translate(
-              x_valid, x_mask, y_valid, y_mask, y_len, beam_size=args.beam_size, max_len=args.max_trans_len, poly_norm_m=args.poly_norm_m)
+              x_valid, x_mask, x_len, y_valid, y_mask, y_len, beam_size=args.beam_size, max_len=args.max_trans_len, poly_norm_m=args.poly_norm_m)
       hyps.extend(hs)
       if end_of_epoch:
         break
     for h in hyps:
-      h_best_words = map(lambda wi: data.trg_i2w_list[0][wi],
+      h_best_words = map(lambda wi: data.src_i2w[wi],
                        filter(lambda wi: wi not in [hparams.bos_id, hparams.eos_id], h))
       if hparams.merge_bpe:
         line = ''.join(h_best_words)
@@ -426,7 +426,8 @@ def train():
     optim = torch.optim.Adam(trainable_params, lr=hparams.lr, weight_decay=hparams.l2_reg)
     #optim = torch.optim.Adam(trainable_params)
     step = 0
-    best_val_ppl = None
+    #best_val_ppl = None
+    best_val_ppl = 1000
     best_val_bleu = None
     cur_attempt = 0
     lr = hparams.lr

@@ -87,7 +87,7 @@ class Encoder(nn.Module):
       padding_value=self.hparams.pad_id)
     #enc_output, (ht, ct) = self.layer(word_emb)
     # enc_output = enc_output.permute(1, 0, 2)
-
+    
     dec_init_cell = self.bridge(torch.cat([ct[0], ct[1]], 1))
     dec_init_state = F.tanh(dec_init_cell)
     dec_init = (dec_init_state, dec_init_cell)
@@ -110,7 +110,7 @@ class Decoder(nn.Module):
                                  padding_idx=hparams.trg_pad_id)
 
     # input: [y_t-1, input_feed]
-    self.layer = nn.LSTMCell(2 * self.hparams.d_word_vec + hparams.d_model * 2,
+    self.layer = nn.LSTMCell(self.hparams.d_word_vec + hparams.d_model * 2,
                              hparams.d_model)
     self.dropout = nn.Dropout(hparams.dropout)
 
@@ -137,10 +137,14 @@ class Decoder(nn.Module):
     logits = []
     # init with attr emb
     attr_emb =self.attr_emb(y_train)
-    attr_emb = attr_emb.sum(dim=1) / y_len.unsqueeze(1)
+    #attr_emb = attr_emb.sum(dim=1) / y_len.unsqueeze(1)
+    attr_emb = attr_emb.sum(dim=1)
     for t in range(x_max_len-1):
-      x_emb_tm1 = x_emb[:, t, :]
-      x_input = torch.cat([x_emb_tm1, attr_emb, input_feed], dim=1)
+      if t == 0:
+        x_emb_tm1 = attr_emb
+      else:
+        x_emb_tm1 = x_emb[:, t, :]
+      x_input = torch.cat([x_emb_tm1, input_feed], dim=1)
 
       h_t, c_t = self.layer(x_input, hidden)
       ctx = self.attention(h_t, x_enc_k, x_enc, attn_mask=x_mask)
@@ -196,7 +200,7 @@ class Seq2Seq(nn.Module):
     else:
       x_trans, x_trans_mask, x_trans_len, index = self.get_soft_translations(x_train, x_mask, x_len, y_sampled, y_sampled_mask, y_sampled_len)
 
-    x_trans_enc, x_trans_init = self.encoder(x_trans, x_trans_len, gumbel_softmax=True)
+    x_trans_enc, x_trans_init = self.encoder(x_trans, x_trans_len, gumbel_softmax=False)
     x_trans_enc = torch.index_select(x_trans_enc, 0, index)
     new_x_trans_init = []
     new_x_trans_init.append(torch.index_select(x_trans_init[0], 0, index))
@@ -354,7 +358,10 @@ class Seq2Seq(nn.Module):
     bs, max_len = x_train.size()
     mask = [[0] * x_len[i] + [1] * (max_len - x_len[i]) for i in range(bs)]
     mask = torch.tensor(mask, dtype=torch.uint8, requires_grad=False, device=self.hparams.device)
+    
     return x_train, mask, x_len, index
+    #index = torch.tensor(np.arange(x_train.size(0)), dtype=torch.long, requires_grad=False, device=self.hparams.device)
+    #return x_train, x_mask, x_len, index
 
   def translate(self, x_train, x_mask, x_len, y, y_mask, y_len, max_len=100, beam_size=2, poly_norm_m=0, sampling=False):
     if sampling:
@@ -399,11 +406,14 @@ class Seq2Seq(nn.Module):
     while mask.sum().item() != 0 and length < max_len:
       length += 1
       y_tm1 = hyp.y
-
       # (batch, d_word_vec) --> (batch, 2 * d_word_vec)
-      y_tm1 = self.decoder.word_emb(y_tm1)
-      y_tm1 = torch.cat([y_tm1, attr_emb], dim=-1)
-
+      #y_tm1 = self.decoder.word_emb(y_tm1)
+      if length == 1:
+        # ave attr emb
+        #y_tm1 = self.decoder.attr_emb(y).sum(1) / y_len.float()
+        y_tm1 = self.decoder.attr_emb(y).sum(1)
+      else:
+        y_tm1 = self.decoder.word_emb(y_tm1)
       logits, dec_state, ctx = self.decoder.step(x_enc, x_enc_k, x_mask, y_tm1, hyp.state, hyp.ctx_tm1, self.data)
       hyp.state = dec_state
       hyp.ctx_tm1 = ctx
@@ -433,16 +443,21 @@ class Seq2Seq(nn.Module):
       length += 1
       new_hyp_score_list = []
       for i, hyp in enumerate(active_hyp):
-        y_tm1 = torch.tensor([int(hyp.y[-1])], dtype=torch.long, 
-          requires_grad=False, device=self.hparams.device)
-        y_tm1 = self.decoder.word_emb(y_tm1)
-        y_tm1 = torch.cat([y_tm1, attr_emb], dim=-1)
-        # if length == 1:
-        #   # ave attr emb
-        #   y_tm1 = self.decoder.attr_emb(y).sum(1) / y_len.float()
-        # else:
-        #   y_tm1 = torch.LongTensor([int(hyp.y[-1])], device=self.hparams.device)
-        #   y_tm1 = self.decoder.word_emb(y_tm1)
+        #y_tm1 = torch.tensor([int(hyp.y[-1])], dtype=torch.long, 
+        #  requires_grad=False, device=self.hparams.device)
+        #y_tm1 = self.decoder.word_emb(y_tm1)
+        #y_tm1 = torch.cat([y_tm1, attr_emb], dim=-1)
+        if length == 1:
+          # ave attr emb
+          #y_tm1 = self.decoder.attr_emb(y).sum(1) / y_len.float()
+          y_tm1 = self.decoder.attr_emb(y).sum(1)
+        else:
+          #y_tm1 = torch.LongTensor([int(hyp.y[-1])], device=self.hparams.device)
+          y_tm1 = Variable(torch.LongTensor([int(hyp.y[-1])]))
+          if self.hparams.cuda:
+            y_tm1 = y_tm1.cuda()
+          y_tm1 = self.decoder.word_emb(y_tm1)
+
         logits, dec_state, ctx = self.decoder.step(x_enc, x_enc_k, x_mask, y_tm1, hyp.state, hyp.ctx_tm1, self.data)
         hyp.state = dec_state
         hyp.ctx_tm1 = ctx

@@ -31,6 +31,7 @@ def get_performance(crit, trans_logits, noise_logits, tau, labels, hparams, sum_
   acc = torch.eq(preds, labels).int().masked_fill_(mask, 0).sum()
   trans_acc = torch.eq(trans_preds, labels).int().masked_fill_(mask, 0).sum()
   loss = trans_loss.sum() + tau * noise_loss.sum()
+  #loss = noise_loss.sum()
   return loss, acc, trans_acc
 
 def count_params(params):
