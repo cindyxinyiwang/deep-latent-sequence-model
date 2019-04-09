@@ -236,8 +236,12 @@ class Seq2Seq(nn.Module):
     index = np.argsort(trans_len)
     index = index[::-1]
     translated_x = translated_x[index].tolist()
+    reverse_index = [-1 for _ in range(len(index))]
+    for i, idx in enumerate(index):
+      reverse_index[idx] = i
+
     x_trans, x_mask, x_count, x_len, _ = self.data._pad(translated_x, self.hparams.pad_id)
-    return x_trans, x_mask, x_len, index
+    return x_trans, x_mask, x_len, reverse_index
 
   def get_soft_translations(self, x_train, x_mask, x_len, 
                             y_sampled, y_sampled_mask, y_sampled_len, max_len=100):
@@ -350,7 +354,11 @@ class Seq2Seq(nn.Module):
 
     index = np.argsort(x_len)
     index = index[::-1]
+    reverse_index = [-1 for _ in range(len(index))]
+    for i, idx in enumerate(index):
+      reverse_index[idx] = i
     index = torch.tensor(index.copy(), dtype=torch.long, requires_grad=False, device=self.hparams.device)
+    reverse_index = torch.tensor(reverse_index.copy(), dtype=torch.long, requires_grad=False, device=self.hparams.device)
 
     x_train = torch.index_select(x_train, 0, index)
     x_len = [x_len[i] for i in index]
@@ -359,7 +367,7 @@ class Seq2Seq(nn.Module):
     mask = [[0] * x_len[i] + [1] * (max_len - x_len[i]) for i in range(bs)]
     mask = torch.tensor(mask, dtype=torch.uint8, requires_grad=False, device=self.hparams.device)
     
-    return x_train, mask, x_len, index
+    return x_train, mask, x_len, reverse_index
     #index = torch.tensor(np.arange(x_train.size(0)), dtype=torch.long, requires_grad=False, device=self.hparams.device)
     #return x_train, x_mask, x_len, index
 
