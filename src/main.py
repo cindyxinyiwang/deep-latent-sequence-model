@@ -152,6 +152,8 @@ parser.add_argument("--word_shuffle", type=float, default=1.5, help="shuffle sen
 parser.add_argument("--temperature", type=float, default=1., help="softmax temperature during training, a small value approx greedy decoding")
 parser.add_argument("--gumbel_softmax", action="store_true", help="use gumbel softmax in back-translation")
 
+parser.add_argument("--reconstruct", action="store_true", help="whether perform reconstruction or transfer when validating bleu")
+
 args = parser.parse_args()
 
 if args.bpe_ngram: args.n = None
@@ -211,8 +213,10 @@ def eval(model, data, crit, step, hparams, eval_bleu=False,
     while True:
       gc.collect()
       x_valid, x_mask, x_count, x_len, x_pos_emb_idxs, y_valid, y_mask, y_count, y_len, y_pos_emb_idxs, y_neg, batch_size, end_of_epoch = data.next_dev(dev_batch_size=1, sort=False)
+      if hparams.reconstruct:
+          y_neg = y_valid
       hs = model.translate(
-              x_valid, x_mask, x_len, y_valid, y_mask, y_len, beam_size=args.beam_size, max_len=args.max_trans_len, poly_norm_m=args.poly_norm_m)
+              x_valid, x_mask, x_len, y_neg, y_mask, y_len, beam_size=args.beam_size, max_len=args.max_trans_len, poly_norm_m=args.poly_norm_m)
       hyps.extend(hs)
       if end_of_epoch:
         break
@@ -346,7 +350,8 @@ def train():
       word_dropout=args.word_dropout,
       word_shuffle=args.word_shuffle,
       temperature=args.temperature,
-      gumbel_softmax=args.gumbel_softmax
+      gumbel_softmax=args.gumbel_softmax,
+      reconstruct=args.reconstruct
     )
   # build or load model
   print("-" * 80)
@@ -509,7 +514,7 @@ def train():
       log_string = "ep={0:<3d}".format(epoch)
       log_string += " steps={0:<6.2f}".format((step / args.update_batch) / 1000)
       log_string += " lr={0:<9.7f}".format(lr)
-      log_string += " loss={0:<7.2f}".format(cur_tr_loss.item())
+      log_string += " loss={0:<7.2f}".format(total_loss / target_words)
       log_string += " |g|={0:<5.2f}".format(grad_norm)
 
       log_string += " ppl={0:<8.2f}".format(np.exp(total_loss / target_words))
@@ -529,10 +534,11 @@ def train():
     else:
       eval_now = False 
     if eval_now:
-      based_on_bleu = args.eval_bleu and best_val_ppl is not None and best_val_ppl <= args.ppl_thresh
+      # based_on_bleu = args.eval_bleu and best_val_ppl is not None and best_val_ppl <= args.ppl_thresh
+      based_on_bleu = False
       if args.dev_zero: based_on_bleu = True
       with torch.no_grad():
-        val_ppl, val_bleu = eval(model, data, crit, step, hparams, eval_bleu=based_on_bleu, valid_batch_size=args.valid_batch_size)	
+        val_ppl, val_bleu = eval(model, data, crit, step, hparams, eval_bleu=args.eval_bleu, valid_batch_size=args.valid_batch_size)	
       if based_on_bleu:
         if best_val_bleu is None or best_val_bleu <= val_bleu:
           save = True 

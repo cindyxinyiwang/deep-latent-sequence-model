@@ -8,10 +8,9 @@ export PYTHONPATH="$(pwd)"
 #export CUDA_VISIBLE_DEVICES="0"
 
 CUDA_VISIBLE_DEVICES=$1 python src/main.py \
-#python3.6 src/main.py \
   --clean_mem_every 5 \
   --reset_output_dir \
-  --output_dir="outputs_yelp/yelp/" \
+  --output_dir="outputs_yelp_noise/yelp/" \
   --data_path data/test/ \
   --train_src_file data/yelp/train.txt \
   --train_trg_file data/yelp/train.attr \
@@ -34,7 +33,7 @@ CUDA_VISIBLE_DEVICES=$1 python src/main.py \
   --max_len 10000 \
   --seed 0 \
   --beam_size 1 \
-  --word_blank 0. \
-  --word_dropout 0. \
-  --word_shuffle 0 \
+  --word_blank 0.3 \
+  --word_dropout 0.3 \
+  --word_shuffle 1.2 \
   --cuda 

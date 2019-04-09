@@ -200,7 +200,7 @@ class Seq2Seq(nn.Module):
     else:
       x_trans, x_trans_mask, x_trans_len, index = self.get_soft_translations(x_train, x_mask, x_len, y_sampled, y_sampled_mask, y_sampled_len)
 
-    x_trans_enc, x_trans_init = self.encoder(x_trans, x_trans_len, gumbel_softmax=False)
+    x_trans_enc, x_trans_init = self.encoder(x_trans, x_trans_len, gumbel_softmax=self.hparams.gumbel_softmax)
     x_trans_enc = torch.index_select(x_trans_enc, 0, index)
     new_x_trans_init = []
     new_x_trans_init.append(torch.index_select(x_trans_init[0], 0, index))
@@ -368,8 +368,8 @@ class Seq2Seq(nn.Module):
     mask = torch.tensor(mask, dtype=torch.uint8, requires_grad=False, device=self.hparams.device)
     
     return x_train, mask, x_len, reverse_index
-    #index = torch.tensor(np.arange(x_train.size(0)), dtype=torch.long, requires_grad=False, device=self.hparams.device)
-    #return x_train, x_mask, x_len, index
+    # index = torch.tensor(np.arange(x_train.size(0)), dtype=torch.long, requires_grad=False, device=self.hparams.device)
+    # return x_train, x_mask, x_len, index
 
   def translate(self, x_train, x_mask, x_len, y, y_mask, y_len, max_len=100, beam_size=2, poly_norm_m=0, sampling=False):
     if sampling:
