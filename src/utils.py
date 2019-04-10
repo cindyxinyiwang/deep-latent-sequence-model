@@ -22,7 +22,7 @@ def get_criterion(hparams):
     crit = crit.cuda()
   return crit
 
-def get_performance(crit, trans_logits, noise_logits, tau, labels, hparams, sum_loss=True):
+def get_performance(crit, trans_logits, noise_logits, labels, hparams, sum_loss=True):
   mask = (labels == hparams.pad_id)
   trans_loss = crit(trans_logits, labels)
   noise_loss = crit(noise_logits, labels)
@@ -30,7 +30,7 @@ def get_performance(crit, trans_logits, noise_logits, tau, labels, hparams, sum_
   _, trans_preds = torch.max(trans_logits, dim=1)
   acc = torch.eq(preds, labels).int().masked_fill_(mask, 0).sum()
   trans_acc = torch.eq(trans_preds, labels).int().masked_fill_(mask, 0).sum()
-  loss = trans_loss.sum() + tau * noise_loss.sum()
+  loss = hparams.trans_weight * trans_loss.sum() + hparams.noise_weight * noise_loss.sum()
   #loss = noise_loss.sum()
   return loss, acc, trans_acc
 

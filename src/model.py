@@ -283,11 +283,15 @@ class Seq2Seq(nn.Module):
     end_flag = [0 for _ in range(batch_size)]
     while mask.sum().item() != 0 and length < max_len:
       length += 1
-      y_tm1 = hyp.y
 
-      # (batch, d_word_vec) --> (batch, 2 * d_word_vec)
-      y_tm1 = y_tm1 @ self.decoder.word_emb.weight
-      y_tm1 = torch.cat([y_tm1, attr_emb], dim=-1)
+      if length == 1:
+          y_tm1 = attr_emb
+      else:
+        y_tm1 = hyp.y
+
+        # (batch, d_word_vec)
+        y_tm1 = y_tm1 @ self.decoder.word_emb.weight
+      # y_tm1 = torch.cat([y_tm1, attr_emb], dim=-1)
 
       # logits: (batch_size, vocab_size)
       logits, dec_state, ctx = self.decoder.step(x_enc, x_enc_k, x_mask, y_tm1, hyp.state, hyp.ctx_tm1, self.data)

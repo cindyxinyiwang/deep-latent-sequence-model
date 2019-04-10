@@ -148,6 +148,10 @@ parser.add_argument("--word_blank", type=float, default=0.2, help="blank words p
 parser.add_argument("--word_dropout", type=float, default=0.2, help="drop words probability")
 parser.add_argument("--word_shuffle", type=float, default=1.5, help="shuffle sentence strength")
 
+# balance training objective
+parser.add_argument("--trans_weight", type=float, default=1., help="back translation objective weight")
+parser.add_argument("--noise_weight", type=float, default=0.5, help="reconstruction objective weight")
+
 # sampling parameters
 parser.add_argument("--temperature", type=float, default=1., help="softmax temperature during training, a small value approx greedy decoding")
 parser.add_argument("--gumbel_softmax", action="store_true", help="use gumbel softmax in back-translation")
@@ -198,8 +202,7 @@ def eval(model, data, crit, step, hparams, eval_bleu=False,
     trans_logits = trans_logits.view(-1, hparams.src_vocab_size)
     noise_logits = noise_logits.view(-1, hparams.src_vocab_size)
     labels = x_valid[:,1:].contiguous().view(-1)
-    val_loss, val_acc, val_transfer_acc = get_performance(crit, trans_logits, noise_logits, 
-        0.5, labels, hparams)
+    val_loss, val_acc, val_transfer_acc = get_performance(crit, trans_logits, noise_logits, labels, hparams)
     n_batches += 1
     valid_loss += val_loss.item()
     valid_acc += val_acc.item()
@@ -351,7 +354,9 @@ def train():
       word_shuffle=args.word_shuffle,
       temperature=args.temperature,
       gumbel_softmax=args.gumbel_softmax,
-      reconstruct=args.reconstruct
+      reconstruct=args.reconstruct,
+      trans_weight=args.trans_weight, 
+      noise_weight=args.noise_weight
     )
   # build or load model
   print("-" * 80)
@@ -469,7 +474,7 @@ def train():
     labels = x_train[:, 1:].contiguous().view(-1)
 
     cur_tr_loss, cur_tr_acc, cur_tr_transfer_acc = get_performance(crit, trans_logits, 
-        noise_logits, 0.5, labels, hparams)
+        noise_logits, labels, hparams)
     total_loss += cur_tr_loss.item()
     total_noise_corrects += cur_tr_acc.item()
     total_transfer_corrects += cur_tr_transfer_acc.item()

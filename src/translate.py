@@ -42,10 +42,11 @@ parser.add_argument("--merge_bpe", action="store_true", help="")
 parser.add_argument("--src_vocab_list", type=str, default=None, help="name of source vocab file")
 parser.add_argument("--trg_vocab_list", type=str, default=None, help="name of target vocab file")
 parser.add_argument("--n_train_sents", type=int, default=None, help="max number of training sentences to load")
-parser.add_argument("--out_file", type=str, default="trans", help="output file for hypothesis")
+parser.add_argument("--out_file", type=str, default="", help="output file for hypothesis")
 parser.add_argument("--debug", action="store_true", help="output file for hypothesis")
 
 parser.add_argument("--nbest", action="store_true", help="whether to return the nbest list")
+parser.add_argument("--reconstruct", action="store_true", help="whether perform reconstruction or transfer when translating")
 args = parser.parse_args()
 
 model_file_name = os.path.join(args.model_dir, "model.pt")
@@ -60,6 +61,9 @@ train_hparams = torch.load(hparams_file_name)
 hparams = TranslationHparams()
 for k, v in train_hparams.__dict__.items():
   setattr(hparams, k, v)
+
+if args.out_file == "":
+  args.out_file = "trans.rec" if args.reconstruct else "trans.transfer"
 
 out_file = os.path.join(args.model_dir, args.out_file)
 print("writing translation to " + out_file)
@@ -103,13 +107,15 @@ else:
 #print(x_test)
 test_batch_size = 1
 print("start translate")
-pbar = tqdm(total=data.test_size)
+pbar = tqdm(total=data.test_size+10)
 with torch.no_grad():
   hyps = []
   while True:
     gc.collect()
     x_valid, x_mask, x_count, x_len, x_pos_emb_idxs, y_valid, y_mask, \
             y_count, y_len, y_pos_emb_idxs, y_neg, batch_size, end_of_epoch = data.next_test(test_batch_size=test_batch_size)
+    if args.reconstruct:
+        y_neg = y_valid
     hs = model.translate(
             x_valid, x_mask, x_len, y_neg, y_mask, y_len, beam_size=args.beam_size, max_len=args.max_len, poly_norm_m=args.poly_norm_m)
     hyps.extend(hs)
