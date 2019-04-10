@@ -18,6 +18,8 @@ from utils import *
 
 parser = argparse.ArgumentParser(description="Neural MT")
 
+parser.add_argument("--dataset", type=str, help="dataset name, mainly for naming purpose")
+
 parser.add_argument("--always_save", action="store_true", help="always_save")
 parser.add_argument("--id_init_sep", action="store_true", help="init identity matrix")
 parser.add_argument("--id_scale", type=float, default=0.01, help="[mlp|dot_prod|linear]")
@@ -48,7 +50,7 @@ parser.add_argument("--pretrained_trg_emb", type=str, default=None, help="ngram 
 
 parser.add_argument("--load_model", action="store_true", help="load an existing model")
 parser.add_argument("--reset_output_dir", action="store_true", help="delete output directory if it exists")
-parser.add_argument("--output_dir", type=str, default="outputs", help="path to output directory")
+parser.add_argument("--output_dir", type=str, default="", help="path to output directory")
 parser.add_argument("--log_every", type=int, default=50, help="how many steps to write log")
 parser.add_argument("--eval_every", type=int, default=500, help="how many steps to compute valid ppl")
 parser.add_argument("--clean_mem_every", type=int, default=10, help="how many steps to clean memory")
@@ -149,8 +151,8 @@ parser.add_argument("--word_dropout", type=float, default=0.2, help="drop words 
 parser.add_argument("--word_shuffle", type=float, default=1.5, help="shuffle sentence strength")
 
 # balance training objective
-parser.add_argument("--trans_weight", type=float, default=1., help="back translation objective weight")
-parser.add_argument("--noise_weight", type=float, default=0.5, help="reconstruction objective weight")
+parser.add_argument("--anneal_epoch", type=int, default=1, 
+    help="decrease the weight of autoencoding loss from 1.0 to 0.0 in the first anneal_iter epoch")
 
 # sampling parameters
 parser.add_argument("--temperature", type=float, default=1., help="softmax temperature during training, a small value approx greedy decoding")
@@ -161,6 +163,13 @@ parser.add_argument("--reconstruct", action="store_true", help="whether perform 
 args = parser.parse_args()
 
 if args.bpe_ngram: args.n = None
+
+if args.output_dir == "":
+    dn = "gs" if args.gumbel_softmax else "t{}".format(args.temperature)
+    args.output_dir = "outputs_{}_wd{}_wb{}_ws{}_an{}_{}/".format(args.dataset, 
+        args.word_dropout, args.word_blank, args.word_shuffle, args.anneal_epoch, dn)
+
+args.device = torch.device("cuda" if args.cuda else "cpu")
 
 def eval(model, data, crit, step, hparams, eval_bleu=False,
          valid_batch_size=20, tr_logits=None):
@@ -259,7 +268,6 @@ def eval(model, data, crit, step, hparams, eval_bleu=False,
   return val_ppl, valid_bleu
 
 def train():
-  device = torch.device("cuda" if args.cuda else "cpu")
   print(args)
   if args.load_model and (not args.reset_hparams):
     print("load hparams..")
@@ -269,7 +277,7 @@ def train():
     hparams.n_train_steps = args.n_train_steps
   else:
     hparams = HParams(**vars(args))
-    
+
   # build or load model
   print("-" * 80)
   print("Creating model")
@@ -354,7 +362,7 @@ def train():
     cur_attempt = 0
     lr = hparams.lr
 
-  model.to(device)
+  model.to(hparams.device)
 
   if args.reset_hparams:
     lr = args.lr
@@ -374,6 +382,8 @@ def train():
   #i = 0
   dev_zero = args.dev_zero
   tr_loss, update_batch_size = None, 0
+  hparams.noise_weight = 1.
+  anneal_rate = 1.0 / (data.train_size * args.anneal_epoch // hparams.batch_size)
   while True:
     step += 1
     x_train, x_mask, x_count, x_len, x_pos_emb_idxs, y_train, y_mask, y_count, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_count, y_sampled_len, y_pos_emb_idxs, batch_size,  eop = data.next_train()
@@ -387,6 +397,8 @@ def train():
 
     cur_tr_loss, cur_tr_acc, cur_tr_transfer_acc = get_performance(crit, trans_logits, 
         noise_logits, labels, hparams)
+    hparams.noise_weight = max(0., hparams.noise_weight - anneal_rate)
+
     total_loss += cur_tr_loss.item()
     total_noise_corrects += cur_tr_acc.item()
     total_transfer_corrects += cur_tr_transfer_acc.item()
@@ -438,7 +450,9 @@ def train():
       log_string += " noise acc={0:<5.4f}".format(total_noise_corrects / target_words)
       log_string += " transfer acc={0:<5.4f}".format(total_transfer_corrects / target_words)
 
-      log_string += " wpm(k)={0:<5.2f}".format(target_words / (1000 * elapsed))
+      # noise weight
+      log_string += " nw={:.4f}".format(hparams.noise_weight)
+      # log_string += " wpm(k)={0:<5.2f}".format(target_words / (1000 * elapsed))
       log_string += " time(min)={0:<5.2f}".format(since_start)
       print(log_string)
     if args.eval_end_epoch:
