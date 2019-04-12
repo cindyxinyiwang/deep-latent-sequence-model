@@ -299,7 +299,7 @@ class Seq2Seq(nn.Module):
       hyp.ctx_tm1 = ctx
 
       # FloatTensor: (batch_size, vocab_size)
-      sampled_y = F.gumbel_softmax(logits=logits, hard=True)
+      sampled_y = F.gumbel_softmax(logits=logits/self.hparams.temperature, tau=1., hard=True)
       hyp.y = sampled_y
 
       for i in range(batch_size):
@@ -329,7 +329,12 @@ class Seq2Seq(nn.Module):
 
     index = np.argsort(trans_len)
     index = index[::-1]
+    reverse_index = [-1 for _ in range(len(index))]
+    for i, idx in enumerate(index):
+      reverse_index[idx] = i
+
     index_t = torch.tensor(index.copy(), dtype=torch.long, requires_grad=False, device=self.hparams.device)    
+    reverse_index = torch.tensor(reverse_index.copy(), dtype=torch.long, requires_grad=False, device=self.hparams.device)
 
     x_trans = torch.index_select(x_trans, dim=0, index=index_t)
     x_len = [trans_len[i] for i in index]
@@ -340,7 +345,7 @@ class Seq2Seq(nn.Module):
 
     x_count = sum(x_len)
 
-    return x_trans, x_mask, x_len, index_t
+    return x_trans, x_mask, x_len, reverse_index
 
   def add_noise(self, x_train, x_mask, x_len):
     """

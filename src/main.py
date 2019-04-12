@@ -165,7 +165,7 @@ args = parser.parse_args()
 if args.bpe_ngram: args.n = None
 
 if args.output_dir == "":
-    dn = "gs" if args.gumbel_softmax else "t{}".format(args.temperature)
+    dn = "gs{}".format(args.temperature) if args.gumbel_softmax else "t{}".format(args.temperature)
     args.output_dir = "outputs_{}_wd{}_wb{}_ws{}_an{}_{}/".format(args.dataset, 
         args.word_dropout, args.word_blank, args.word_shuffle, args.anneal_epoch, dn)
 
