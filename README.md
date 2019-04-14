@@ -15,8 +15,16 @@
 * (cindy): add sampling decoding options in back-translation
 
 
-## Update Notes
-* (junxian) 04/05: concatenate attribute embedding to word embedding at EACH time stamp
+## Pre-trained LM test PPL
+* Yelp:
+
+  | train\stest | style 0 | style 1 |
+  | ----------- | ------- | ------- |
+  | **style 0** | 31.97   | 70.04   |
+  | **style 1** | 119.19  | 21.87   |
+
+  
+
 
 ## References
 * [What is wrong with style transfer for texts?](https://arxiv.org/abs/1808.04365)
