@@ -134,6 +134,11 @@ class DataUtil(object):
 
     return x_dev, x_mask, x_count, x_len, x_pos_emb_idxs, y_dev, y_mask, y_count, y_len, y_pos_emb_idxs, y_neg, batch_size, eop
 
+  def reset_test(self, test_src_file, test_trg_file):
+    self.test_x, self.test_y, src_len = self._build_parallel(test_src_file, test_trg_file, is_train=False)
+    self.test_size = len(self.test_x)
+    self.test_index = 0
+ 
   def next_test(self, test_batch_size=10):
     start_index = self.test_index
     end_index = min(start_index + test_batch_size, self.test_size)

@@ -5,7 +5,7 @@
 #SBATCH -t 0
 
 export PYTHONPATH="$(pwd)"
-export CUDA_VISIBLE_DEVICES="0"
+export CUDA_VISIBLE_DEVICES="2"
 
 python3.6 src/cnn_classify.py \
   --dataset yelp \
@@ -23,11 +23,11 @@ python3.6 src/cnn_classify.py \
   --d_word_vec=128 \
   --d_model=512 \
   --log_every=100 \
-  --eval_every=2500 \
+  --eval_every=1500 \
   --ppl_thresh=10000 \
   --eval_bleu \
-  --out_c_list="1,2,3" \
-  --k_list="2,3,3" \
+  --out_c_list="1,2,3,4" \
+  --k_list="3,3,3,3" \
   --batch_size 32 \
   --valid_batch_size=32 \
   --patience 5 \

@@ -11,6 +11,7 @@ CUDA_VISIBLE_DEVICES=$1 python src/main.py \
   --dataset yelp \
   --clean_mem_every 5 \
   --reset_output_dir \
+  --classifier_dir="outputs_yelp_classify/" \
   --data_path data/test/ \
   --train_src_file data/yelp/train.txt \
   --train_trg_file data/yelp/train.attr \

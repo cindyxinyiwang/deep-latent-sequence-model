@@ -16,6 +16,7 @@ from data_utils import DataUtil
 from hparams import *
 from model import *
 from utils import *
+from cnn_classify import test, CNNClassify
 
 if __name__ == "__main__":
     from sys import path
@@ -28,16 +29,7 @@ parser = argparse.ArgumentParser(description="Neural MT")
 parser.add_argument("--dataset", type=str, help="dataset name, mainly for naming purpose")
 
 parser.add_argument("--always_save", action="store_true", help="always_save")
-parser.add_argument("--id_init_sep", action="store_true", help="init identity matrix")
-parser.add_argument("--id_scale", type=float, default=0.01, help="[mlp|dot_prod|linear]")
 
-parser.add_argument("--semb", type=str, default=None, help="[mlp|dot_prod|linear]")
-parser.add_argument("--dec_semb", action="store_true", help="load an existing model")
-parser.add_argument("--query_base", action="store_true", help="load an existing model")
-parser.add_argument("--semb_vsize", type=int, default=None, help="how many steps to write log")
-parser.add_argument("--lan_code_rl", action="store_true", help="whether to set all unk words of rl to a reserved id")
-parser.add_argument("--sample_rl", action="store_true", help="whether to set all unk words of rl to a reserved id")
-parser.add_argument("--sep_char_proj", action="store_true", help="whether to have separate matrix for projecting char embedding")
 parser.add_argument("--residue", action="store_true", help="whether to set all unk words of rl to a reserved id")
 parser.add_argument("--layer_norm", action="store_true", help="whether to set all unk words of rl to a reserved id")
 parser.add_argument("--src_no_char", action="store_true", help="load an existing model")
@@ -58,6 +50,7 @@ parser.add_argument("--pretrained_trg_emb", type=str, default=None, help="ngram 
 parser.add_argument("--load_model", action="store_true", help="load an existing model")
 parser.add_argument("--reset_output_dir", action="store_true", help="delete output directory if it exists")
 parser.add_argument("--output_dir", type=str, default="", help="path to output directory")
+parser.add_argument("--classifier_dir", type=str, default="", help="directory that stores the classifier model")
 parser.add_argument("--log_every", type=int, default=50, help="how many steps to write log")
 parser.add_argument("--eval_every", type=int, default=500, help="how many steps to compute valid ppl")
 parser.add_argument("--clean_mem_every", type=int, default=10, help="how many steps to clean memory")
@@ -267,7 +260,14 @@ def eval(model, data, crit, step, hparams, eval_bleu=False,
       line = line.strip()
       out_file.write(line + '\n')
       out_file.flush()
-
+    out_file.close()
+    # classify accuracy
+    classifier_file_name = os.path.join(args.classifier_dir, "model.pt")
+    print("Loading model from '{0}'".format(classifier_file_name))
+    classifier = torch.load(classifier_file_name)
+    classifier.eval()
+    cur_acc, cur_loss = test(classifier, data, hparams, valid_hyp_file, hparams.dev_trg_file, negate=True)
+    print("classifier_acc={}".format(cur_acc))
   bt_ppl = np.exp(total_bt_loss / valid_words)
   noise_ppl = np.exp(total_noise_loss / valid_words)
 
@@ -379,11 +379,6 @@ def train():
         print("initialize uniform with range {}".format(args.init_range))
         for p in model.parameters():
           p.data.uniform_(-args.init_range, args.init_range)
-      if args.id_init_sep and args.semb and args.sep_char_proj:
-        print("initialize char proj as identity matrix")
-        for s in model.encoder.char_emb.sep_proj_list:
-          d = s.weight.data.size(0)
-          s.weight.data.copy_(torch.eye(d) + args.id_scale*torch.diagflat(torch.ones(d).normal_(0,1)))
     trainable_params = [
       p for p in model.parameters() if p.requires_grad]
     optim = torch.optim.Adam(trainable_params, lr=hparams.lr, weight_decay=hparams.l2_reg)
