@@ -83,7 +83,7 @@ class DataUtil(object):
 
     x_train = self.train_x[start_index:end_index]
     y_train = self.train_y[start_index:end_index]
-    x_train, y_train = self.sort_by_xlen(x_train, y_train)
+    x_train, y_train, _ = self.sort_by_xlen(x_train, y_train)
 
     self.train_index += 1
     batch_size = len(x_train)
@@ -118,7 +118,9 @@ class DataUtil(object):
     x_dev = self.dev_x[start_index:end_index]
     y_dev = self.dev_y[start_index:end_index]
     if sort:
-      x_dev, y_dev = self.sort_by_xlen(x_dev, y_dev)
+      x_dev, y_dev, index = self.sort_by_xlen(x_dev, y_dev)
+    else:
+      index = None
 
     x_dev, x_mask, x_count, x_len, x_pos_emb_idxs = self._pad(x_dev, self.hparams.pad_id)
     y_dev, y_mask, y_count, y_len, y_pos_emb_idxs = self._pad(y_dev, self.hparams.trg_pad_id)
@@ -132,7 +134,7 @@ class DataUtil(object):
       eop = False
       self.dev_index += batch_size
 
-    return x_dev, x_mask, x_count, x_len, x_pos_emb_idxs, y_dev, y_mask, y_count, y_len, y_pos_emb_idxs, y_neg, batch_size, eop
+    return x_dev, x_mask, x_count, x_len, x_pos_emb_idxs, y_dev, y_mask, y_count, y_len, y_pos_emb_idxs, y_neg, batch_size, eop, index
 
   def reset_test(self, test_src_file, test_trg_file):
     self.test_x, self.test_y, src_len = self._build_parallel(test_src_file, test_trg_file, is_train=False)
@@ -147,7 +149,7 @@ class DataUtil(object):
     x_test = self.test_x[start_index:end_index]
     y_test = self.test_y[start_index:end_index]
 
-    x_test, y_test = self.sort_by_xlen(x_test, y_test)
+    x_test, y_test, index = self.sort_by_xlen(x_test, y_test)
 
     x_test, x_mask, x_count, x_len, x_pos_emb_idxs = self._pad(x_test, self.hparams.pad_id)
     y_test, y_mask, y_count, y_len, y_pos_emb_idxs = self._pad(y_test, self.hparams.trg_pad_id)
@@ -161,7 +163,7 @@ class DataUtil(object):
       eop = False
       self.test_index += batch_size
 
-    return x_test, x_mask, x_count, x_len, x_pos_emb_idxs, y_test, y_mask, y_count, y_len, y_pos_emb_idxs, y_neg, batch_size, eop
+    return x_test, x_mask, x_count, x_len, x_pos_emb_idxs, y_test, y_mask, y_count, y_len, y_pos_emb_idxs, y_neg, batch_size, eop, index
   
   def sort_by_xlen(self, x, y, x_char_kv=None, y_char_kv=None, file_index=None, descend=True):
     x = np.array(x)
@@ -171,7 +173,7 @@ class DataUtil(object):
     if descend:
       index = index[::-1]
     x, y = x[index].tolist(), y[index].tolist()
-    return x, y
+    return x, y, index
 
   def _pad(self, sentences, pad_id, char_kv=None, char_dim=None, char_sents=None):
     batch_size = len(sentences)
@@ -246,7 +248,7 @@ class DataUtil(object):
       if line_count % 10000 == 0:
         print("processed {} lines".format(line_count))
     if is_train:
-      src_data, trg_data = self.sort_by_xlen(src_data, trg_data, descend=False)
+      src_data, trg_data, _ = self.sort_by_xlen(src_data, trg_data, descend=False)
     print("src_unk={}, trg_unk={}".format(src_unk_count, trg_unk_count))
     assert len(src_data) == len(trg_data)
     print("lines={}, skipped_lines={}".format(len(src_data), skip_line_count))

@@ -167,8 +167,8 @@ if args.bpe_ngram: args.n = None
 
 if args.output_dir == "":
     dn = "gs{}".format(args.temperature) if args.gumbel_softmax else "t{}".format(args.temperature)
-    lm = "lm" if args.lm else ""
-    args.output_dir = "outputs_{}/{}_wd{}_wb{}_ws{}_an{}_{}_{}/".format(args.dataset, args.dataset,
+    lm = "_lm" if args.lm else ""
+    args.output_dir = "outputs_{}/{}_wd{}_wb{}_ws{}_an{}_{}{}/".format(args.dataset, args.dataset,
         args.word_dropout, args.word_blank, args.word_shuffle, args.anneal_epoch, dn, lm)
 
 args.device = torch.device("cuda" if args.cuda else "cpu")
@@ -202,7 +202,9 @@ def eval(model, data, crit, step, hparams, eval_bleu=False,
     gc.collect()
 
     # next batch
-    x_valid, x_mask, x_count, x_len, x_pos_emb_idxs, y_valid, y_mask, y_count, y_len, y_pos_emb_idxs, y_neg, batch_size, end_of_epoch = data.next_dev(dev_batch_size=hparams.batch_size)
+    x_valid, x_mask, x_count, x_len, x_pos_emb_idxs, \
+    y_valid, y_mask, y_count, y_len, y_pos_emb_idxs, \
+    y_neg, batch_size, end_of_epoch, _ = data.next_dev(dev_batch_size=128)
     #print(x_valid)
     #print(x_mask)
     #print(y_valid)
@@ -241,11 +243,15 @@ def eval(model, data, crit, step, hparams, eval_bleu=False,
     hyps = []
     while True:
       gc.collect()
-      x_valid, x_mask, x_count, x_len, x_pos_emb_idxs, y_valid, y_mask, y_count, y_len, y_pos_emb_idxs, y_neg, batch_size, end_of_epoch = data.next_dev(dev_batch_size=1, sort=False)
+      x_valid, x_mask, x_count, x_len, \
+      x_pos_emb_idxs, y_valid, y_mask, \
+      y_count, y_len, y_pos_emb_idxs, \
+      y_neg, batch_size, end_of_epoch, index = data.next_dev(dev_batch_size=128)
       if hparams.reconstruct:
           y_neg = y_valid
       hs = model.translate(
               x_valid, x_mask, x_len, y_neg, y_mask, y_len, beam_size=args.beam_size, max_len=args.max_trans_len, poly_norm_m=args.poly_norm_m)
+      hs = reorder(hs, index)
       hyps.extend(hs)
       if end_of_epoch:
         break
@@ -306,10 +312,7 @@ def train():
     hparams.n_train_steps = args.n_train_steps
   else:
     hparams = HParams(**vars(args))
-    if hparams.word_dropout == 0 and hparams.word_blank == 0 and hparams.word_shuffle == 0:
-        hparams.noise_flag = False
-    else:
-        hparams.noise_flag = True
+    hparams.noise_flag = True
 
   # build or load model
   print("-" * 80)

@@ -448,6 +448,11 @@ class Seq2Seq(nn.Module):
         hyps = self.sampling_translate(x_train, x_mask, x_len, y, y_mask, y_len, max_len=max_len)
         return hyps
 
+    if beam_size == 1:
+        hyps = self.sampling_translate(x_train, x_mask, x_len, y, y_mask, y_len, max_len=max_len, greedy=True)
+
+        return hyps
+
     hyps = []
     batch_size = x_train.size(0)
     for i in range(batch_size):
@@ -463,8 +468,11 @@ class Seq2Seq(nn.Module):
       hyps.append(hyp.y[1:-1])
     return hyps
 
-  def sampling_translate(self, x_train, x_mask, x_len, y, y_mask, y_len, max_len=100):
+  def sampling_translate(self, x_train, x_mask, x_len, y, y_mask, y_len, max_len=100, greedy=False):
     batch_size = x_train.size(0)
+
+    if isinstance(y_len, list):
+      y_len = torch.tensor(y_len, dtype=torch.float, device=self.hparams.device, requires_grad=False)
 
     # x_enc: (batch, seq_len, 2 * d_model)
     x_enc, dec_init = self.encoder(x_train, x_len)
@@ -498,8 +506,12 @@ class Seq2Seq(nn.Module):
       hyp.state = dec_state
       hyp.ctx_tm1 = ctx
 
-      logits = logits / self.hparams.temperature
-      sampled_y = torch.distributions.Categorical(logits=logits).sample()
+      if greedy:
+        sampled_y = torch.argmax(logits, dim=1)
+      else:
+        logits = logits / self.hparams.temperature
+        sampled_y = torch.distributions.Categorical(logits=logits).sample()
+      
       hyp.y = sampled_y
 
       mask = torch.mul((sampled_y != end_symbol), mask)

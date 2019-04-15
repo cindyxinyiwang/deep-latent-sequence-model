@@ -37,7 +37,7 @@ parser.add_argument("--beam_size", type=int, default=None, help="beam size")
 parser.add_argument("--max_len", type=int, default=300, help="maximum len considered on the target side")
 parser.add_argument("--poly_norm_m", type=float, default=0, help="m in polynormial normalization")
 parser.add_argument("--non_batch_translate", action="store_true", help="use non-batched translation")
-parser.add_argument("--batch_size", type=int, default=1, help="")
+parser.add_argument("--batch_size", type=int, default=32, help="")
 parser.add_argument("--merge_bpe", action="store_true", help="")
 parser.add_argument("--src_vocab_list", type=str, default=None, help="name of source vocab file")
 parser.add_argument("--trg_vocab_list", type=str, default=None, help="name of target vocab file")
@@ -105,7 +105,7 @@ if args.debug:
 else:
   y_test = None
 #print(x_test)
-test_batch_size = 1
+test_batch_size = 128 if args.beam_size == 1 else 1
 print("start translate")
 pbar = tqdm(total=data.test_size+10)
 with torch.no_grad():
@@ -113,11 +113,12 @@ with torch.no_grad():
   while True:
     gc.collect()
     x_valid, x_mask, x_count, x_len, x_pos_emb_idxs, y_valid, y_mask, \
-            y_count, y_len, y_pos_emb_idxs, y_neg, batch_size, end_of_epoch = data.next_test(test_batch_size=test_batch_size)
+    y_count, y_len, y_pos_emb_idxs, y_neg, batch_size, end_of_epoch, index = data.next_test(test_batch_size=test_batch_size)
     if args.reconstruct:
         y_neg = y_valid
     hs = model.translate(
             x_valid, x_mask, x_len, y_neg, y_mask, y_len, beam_size=args.beam_size, max_len=args.max_len, poly_norm_m=args.poly_norm_m)
+    hs = reorder(hs, index)
     hyps.extend(hs)
     for h in hs:
       h_best_words = map(lambda wi: data.src_i2w[wi],

@@ -15,6 +15,24 @@ def memReport():
     if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
       print(type(obj), obj.size())
 
+def reorder(x, index):
+  """original x is reordered in terms of index to get x,
+  this function is to recover original index
+
+  Args:
+    x: list
+    index: numpy array, index[i] == j means the ith element
+           in x was located at j originally
+  """
+
+  assert(len(x) == len(index))
+  new_x = [0 for _ in range(len(x))]
+
+  for i, j in enumerate(index):
+    new_x[j] = x[i]
+
+  return new_x
+
 def get_criterion(hparams):
   loss_reduce = False
   crit = nn.CrossEntropyLoss(ignore_index=hparams.pad_id, size_average=False, reduce=loss_reduce)

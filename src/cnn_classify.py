@@ -85,7 +85,9 @@ def test(model, data, hparams, test_src_file, test_trg_file, negate=False):
 
   data.reset_test(test_src_file, test_trg_file)
   while True:
-    x, x_mask, x_count, x_len, x_pos_emb_idxs, y, y_mask, y_count, y_len, y_pos_emb_idxs, y_neg, batch_size, end_of_epoch = data.next_test(test_batch_size=hparams.batch_size)
+    x, x_mask, x_count, x_len, x_pos_emb_idxs, \
+    y, y_mask, y_count, y_len, y_pos_emb_idxs, \
+    y_neg, batch_size, end_of_epoch, _ = data.next_test(test_batch_size=hparams.batch_size)
     # clear GPU memory
     gc.collect()
 
