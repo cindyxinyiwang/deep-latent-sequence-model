@@ -8,6 +8,7 @@ import torch.nn.functional as F
 import gc
 import numpy as np
 from utils import *
+from lm_lstm import *
 from noise import NoiseLayer
 
 class MlpAttn(nn.Module):
@@ -183,6 +184,20 @@ class Seq2Seq(nn.Module):
     self.noise = NoiseLayer(hparams.word_blank, hparams.word_dropout,
         hparams.word_shuffle, hparams.pad_id, hparams.unk_id, hparams.eos_id)
 
+    if hparams.lm:
+      self.LM0 = torch.load(hparams.lm_style0)
+      self.LM1 = torch.load(hparams.lm_style1)
+
+      for param in self.LM0.parameters():
+          param.requires_grad = False
+
+      for param in self.LM1.parameters():
+          param.requires_grad = False
+
+      self.LM = torch.nn.ModuleList([self.LM0, self.LM1])
+    else:
+      self.LM = None
+
   def forward(self, x_train, x_mask, x_len, x_pos_emb_idxs, y_train, y_mask, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_len):
     y_len = torch.tensor(y_len, dtype=torch.float, device=self.hparams.device, requires_grad=False)
     y_sampled_len = torch.tensor(y_sampled_len, dtype=torch.float, device=self.hparams.device, 
@@ -198,8 +213,19 @@ class Seq2Seq(nn.Module):
         x_trans, x_trans_mask, x_trans_len, index = self.get_translations(x_train, x_mask, x_len, y_sampled, y_sampled_mask, y_sampled_len)
       index = torch.tensor(index.copy(), dtype=torch.long, requires_grad=False, device=self.hparams.device)
     else:
-      x_trans, x_trans_mask, x_trans_len, index = self.get_soft_translations(x_train, x_mask, x_len, y_sampled, y_sampled_mask, y_sampled_len)
+      x_trans, x_trans_mask, x_trans_len, index, neg_entropy = self.get_soft_translations(x_train, x_mask, x_len, 
+        y_sampled, y_sampled_mask, y_sampled_len)
 
+    if self.hparams.lm:
+      # E_{x ~ q(z|x, y)}[log p(z|y)]
+      log_prior = self.log_prior(x_trans, x_trans_mask, x_trans_len, y_sampled)
+
+      # KL = E_{x ~ q(z|x, y)}[log q(z|x, y) - log p(z|y)]
+      KL_loss = neg_entropy - log_prior
+    else:
+      KL_loss = None
+
+    # back-translation
     x_trans_enc, x_trans_init = self.encoder(x_trans, x_trans_len, gumbel_softmax=self.hparams.gumbel_softmax)
     x_trans_enc = torch.index_select(x_trans_enc, 0, index)
     new_x_trans_init = []
@@ -211,6 +237,14 @@ class Seq2Seq(nn.Module):
     trans_logits = self.decoder(x_trans_enc, x_trans_enc_k, x_trans_init, x_trans_mask, y_train, y_mask, y_len, x_train, x_len)
 
     # then denoise encode
+    if self.hparams.noise_flag:
+      noise_logits = self.denoise_ae(x_train, x_mask, x_len, y_train, y_mask, y_len)
+    else:
+      noise_logits = None
+
+    return trans_logits, noise_logits, KL_loss
+
+  def denoise_ae(self, x_train, x_mask, x_len, y_train, y_mask, y_len):
     # [batch_size, x_len, d_model * 2]
     x_noise, x_noise_mask, x_noise_len, index  = self.add_noise(x_train, x_mask, x_len)
     x_noise_enc, x_noise_init = self.encoder(x_noise, x_noise_len)
@@ -222,8 +256,21 @@ class Seq2Seq(nn.Module):
 
     x_noise_enc_k = self.enc_to_k(x_noise_enc)
     # [batch_size, y_len-1, trg_vocab_size]
-    noise_logits = self.decoder(x_noise_enc, x_noise_enc_k, x_noise_init, x_noise_mask, y_train, y_mask, y_len, x_train, x_len)
-    return trans_logits, noise_logits
+    noise_logits = self.decoder(x_noise_enc, x_noise_enc_k, x_noise_init, 
+      x_noise_mask, y_train, y_mask, y_len, x_train, x_len)
+
+    return noise_logits
+
+  def log_prior(self, x, x_mask, x_len, y_sampled):
+    x_mask = x_mask.float()
+    y_sampled = y_sampled.squeeze(-1).float()
+
+    # (batch_size)
+    log_prior0 = self.LM[0].log_probability(x, x_len, gumbel_softmax=True, x_mask=x_mask)
+    log_prior1 = self.LM[1].log_probability(x, x_len, gumbel_softmax=True, x_mask=x_mask)
+
+    return (1. - y_sampled) * log_prior0 + y_sampled * log_prior1
+
 
   def get_translations(self, x_train, x_mask, x_len, y_sampled, y_sampled_mask, y_sampled_len):
     # list
@@ -281,6 +328,12 @@ class Seq2Seq(nn.Module):
     trans_len = [1 for _ in range(batch_size)]
 
     end_flag = [0 for _ in range(batch_size)]
+
+    # E_{x~q}[log q], used to compute KL term in VAE
+    neg_entropy = 0.
+
+    stack_logits = []
+    stack_sample = []
     while mask.sum().item() != 0 and length < max_len:
       length += 1
 
@@ -301,6 +354,11 @@ class Seq2Seq(nn.Module):
       # FloatTensor: (batch_size, vocab_size)
       sampled_y = F.gumbel_softmax(logits=logits/self.hparams.temperature, tau=1., hard=True)
       hyp.y = sampled_y
+
+      if self.hparams.lm:
+        stack_logits.append(logits.unsqueeze(1))
+        stack_sample.append(torch.mul(sampled_y, mask.float().unsqueeze(1)).unsqueeze(1))
+        # neg_entropy = neg_entropy + ((F.log_softmax(logits, dim=1) * sampled_y).sum(dim=1) * mask.float()).detach()
 
       for i in range(batch_size):
         if mask[i].item():
@@ -345,7 +403,12 @@ class Seq2Seq(nn.Module):
 
     x_count = sum(x_len)
 
-    return x_trans, x_mask, x_len, reverse_index
+    if self.hparams.lm:
+      stack_logits = torch.cat(stack_logits, dim=1)
+      stack_sample = torch.cat(stack_sample, dim=1)
+      neg_entropy = (F.log_softmax(stack_logits, dim=2) * stack_sample).sum(dim=2).sum(dim=1)
+
+    return x_trans, x_mask, x_len, reverse_index, neg_entropy
 
   def add_noise(self, x_train, x_mask, x_len):
     """

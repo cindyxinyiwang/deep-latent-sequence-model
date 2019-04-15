@@ -6,6 +6,7 @@ import gc
 import random
 import subprocess
 import re
+import importlib
 
 import torch
 import torch.nn as nn
@@ -15,6 +16,12 @@ from data_utils import DataUtil
 from hparams import *
 from model import *
 from utils import *
+
+if __name__ == "__main__":
+    from sys import path
+    from os.path import dirname as dir
+
+    path.append(dir(path[0]))
 
 parser = argparse.ArgumentParser(description="Neural MT")
 
@@ -158,6 +165,7 @@ parser.add_argument("--anneal_epoch", type=int, default=1,
 parser.add_argument("--temperature", type=float, default=1., help="softmax temperature during training, a small value approx greedy decoding")
 parser.add_argument("--gumbel_softmax", action="store_true", help="use gumbel softmax in back-translation")
 
+parser.add_argument("--lm", action="store_true", help="whether including the LM loss")
 parser.add_argument("--reconstruct", action="store_true", help="whether perform reconstruction or transfer when validating bleu")
 
 args = parser.parse_args()
@@ -166,10 +174,16 @@ if args.bpe_ngram: args.n = None
 
 if args.output_dir == "":
     dn = "gs{}".format(args.temperature) if args.gumbel_softmax else "t{}".format(args.temperature)
-    args.output_dir = "outputs_{}_wd{}_wb{}_ws{}_an{}_{}/".format(args.dataset, 
-        args.word_dropout, args.word_blank, args.word_shuffle, args.anneal_epoch, dn)
+    lm = "lm" if args.lm else ""
+    args.output_dir = "outputs_{}/{}_wd{}_wb{}_ws{}_an{}_{}_{}/".format(args.dataset, args.dataset,
+        args.word_dropout, args.word_blank, args.word_shuffle, args.anneal_epoch, dn, lm)
 
 args.device = torch.device("cuda" if args.cuda else "cpu")
+
+if args.lm:
+    config_file = "config.config_{}".format(args.dataset)
+    params = importlib.import_module(config_file).params_main
+    args = argparse.Namespace(**params, **vars(args))
 
 def eval(model, data, crit, step, hparams, eval_bleu=False,
          valid_batch_size=20, tr_logits=None):
@@ -183,7 +197,8 @@ def eval(model, data, crit, step, hparams, eval_bleu=False,
   valid_trans_acc = 0
   n_batches = 0
 
-  valid_total = valid_rule_count = valid_word_count = valid_eos_count = 0
+  valid_total = valid_rule_count = valid_word_count = valid_sents = valid_eos_count = 0
+  total_bt_loss = total_noise_loss = total_KL_loss = 0.
   valid_word_loss, valid_rule_loss, valid_eos_loss = 0, 0, 0
   valid_bleu = None
   if eval_bleu:
@@ -203,19 +218,28 @@ def eval(model, data, crit, step, hparams, eval_bleu=False,
     x_count -= batch_size
     # word count
     valid_words += x_count
+    valid_sents += batch_size
 
-    trans_logits, noise_logits = model.forward(
+    trans_logits, noise_logits, KL_loss = model.forward(
       x_valid, x_mask, x_len, x_pos_emb_idxs,
       y_valid, y_mask, y_len, y_pos_emb_idxs, 
       y_neg,  y_mask, y_len)
-    trans_logits = trans_logits.view(-1, hparams.src_vocab_size)
-    noise_logits = noise_logits.view(-1, hparams.src_vocab_size)
+
     labels = x_valid[:,1:].contiguous().view(-1)
-    val_loss, val_acc, val_transfer_acc = get_performance(crit, trans_logits, noise_logits, labels, hparams)
+    val_loss, trans_loss, noise_loss, val_acc, val_transfer_acc = \
+                get_performance(crit, trans_logits, noise_logits, labels, hparams)
+
+    if hparams.lm:
+        val_loss = val_loss + KL_loss.sum()
+        total_KL_loss += KL_loss.sum().item()
+
     n_batches += 1
     valid_loss += val_loss.item()
-    valid_acc += val_acc.item()
-    valid_trans_acc += val_transfer_acc.item()
+    total_bt_loss += trans_loss.item()
+    total_noise_loss += noise_loss.item()
+    valid_acc += val_acc
+    valid_trans_acc += val_transfer_acc
+    total_bt_loss
     # print("{0:<5d} / {1:<5d}".format(val_acc.data[0], y_count))
     if end_of_epoch:
       break
@@ -243,12 +267,17 @@ def eval(model, data, crit, step, hparams, eval_bleu=False,
       line = line.strip()
       out_file.write(line + '\n')
       out_file.flush()
-  val_ppl = np.exp(valid_loss / valid_words)
+
+  bt_ppl = np.exp(total_bt_loss / valid_words)
+  noise_ppl = np.exp(total_noise_loss / valid_words)
+
   log_string = "val_step={0:<6d}".format(step)
-  log_string += " loss={0:<6.2f}".format(valid_loss / valid_words)
-  log_string += " noise acc={0:<5.4f}".format(valid_acc / valid_words)
-  log_string += " transfer acc={0:<5.4f}".format(valid_trans_acc / valid_words)
-  log_string += " val_ppl={0:<.2f}".format(val_ppl)
+  log_string += " total={0:<6.2f}".format(valid_loss / valid_words)
+  log_string += " KL={0:<6.2f}".format(total_KL_loss / valid_sents)
+  log_string += " bt_ppl={0:<6.2f}".format(bt_ppl)
+  log_string += " n_ppl={0:<6.2f}".format(noise_ppl)
+  log_string += " n_acc={0:<5.4f}".format(valid_acc / valid_words)
+  log_string += " bt_acc={0:<5.4f}".format(valid_trans_acc / valid_words)
   if eval_bleu:
     out_file.close()
     ref_file = args.dev_trg_ref
@@ -265,7 +294,7 @@ def eval(model, data, crit, step, hparams, eval_bleu=False,
   print(log_string)
   model.train()
   #exit(0)
-  return val_ppl, valid_bleu
+  return valid_loss / valid_words, valid_bleu
 
 def train():
   print(args)
@@ -277,6 +306,10 @@ def train():
     hparams.n_train_steps = args.n_train_steps
   else:
     hparams = HParams(**vars(args))
+    if hparams.word_dropout == 0 and hparams.word_blank == 0 and hparams.word_shuffle == 0:
+        hparams.noise_flag = False
+    else:
+        hparams.noise_flag = True
 
   # build or load model
   print("-" * 80)
@@ -375,7 +408,8 @@ def train():
   print("-" * 80)
   print("start training...")
   start_time = log_start_time = time.time()
-  target_words, total_loss, total_noise_corrects, total_transfer_corrects = 0, 0, 0, 0
+  target_words = total_loss = total_sents = total_noise_corrects = total_transfer_corrects = 0
+  total_bt_loss = total_noise_loss = total_KL_loss = 0.
   target_rules, target_total, target_eos = 0, 0, 0
   total_word_loss, total_rule_loss, total_eos_loss = 0, 0, 0
   model.train()
@@ -388,20 +422,28 @@ def train():
     step += 1
     x_train, x_mask, x_count, x_len, x_pos_emb_idxs, y_train, y_mask, y_count, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_count, y_sampled_len, y_pos_emb_idxs, batch_size,  eop = data.next_train()
     target_words += (x_count - batch_size)
-    trans_logits, noise_logits = model.forward(x_train, x_mask, x_len, x_pos_emb_idxs, y_train, y_mask, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_len)
-    trans_logits = trans_logits.view(-1, hparams.src_vocab_size)
-    noise_logits = noise_logits.view(-1, hparams.src_vocab_size)
+    total_sents += batch_size
+    trans_logits, noise_logits, KL_loss = model.forward(x_train, x_mask, x_len, x_pos_emb_idxs, y_train, y_mask, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_len)
 
     # not predicting the start symbol
     labels = x_train[:, 1:].contiguous().view(-1)
 
-    cur_tr_loss, cur_tr_acc, cur_tr_transfer_acc = get_performance(crit, trans_logits, 
+    cur_tr_loss, trans_loss, noise_loss, cur_tr_acc, cur_tr_transfer_acc = get_performance(crit, trans_logits, 
         noise_logits, labels, hparams)
+    if hparams.lm:
+        cur_tr_loss = cur_tr_loss + KL_loss.sum()
+        total_KL_loss += KL_loss.sum().item()
+
     hparams.noise_weight = max(0., hparams.noise_weight - anneal_rate)
+    if hparams.noise_weight == 0:
+        hparams.noise_flag = False
 
     total_loss += cur_tr_loss.item()
-    total_noise_corrects += cur_tr_acc.item()
-    total_transfer_corrects += cur_tr_transfer_acc.item()
+    total_bt_loss += trans_loss.item()
+    total_noise_loss += noise_loss.item()
+
+    total_noise_corrects += cur_tr_acc
+    total_transfer_corrects += cur_tr_transfer_acc
     if tr_loss is None:
       tr_loss = cur_tr_loss
     else:
@@ -424,7 +466,7 @@ def train():
         s = (step / args.update_batch) % args.lr_dec_steps
         lr = args.lr_min + 0.5*(args.lr_max-args.lr_min)*(1+np.cos(s*np.pi/args.lr_dec_steps))
         set_lr(optim, lr)
-      tr_loss = torch.div(tr_loss, update_batch_size)
+      tr_loss = tr_loss / update_batch_size
       tr_loss.backward()
       #grad_norm = grad_clip(trainable_params, grad_bound=args.clip_grad)
       grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip_grad)
@@ -443,12 +485,14 @@ def train():
       log_string = "ep={0:<3d}".format(epoch)
       log_string += " steps={0:<6.2f}".format((step / args.update_batch) / 1000)
       log_string += " lr={0:<9.7f}".format(lr)
-      log_string += " loss={0:<7.2f}".format(total_loss / target_words)
+      log_string += " total={0:<7.2f}".format(total_loss / target_words)
+      log_string += " KL={0:<7.2f}".format(total_KL_loss / total_sents)
       log_string += " |g|={0:<5.2f}".format(grad_norm)
 
-      log_string += " ppl={0:<8.2f}".format(np.exp(total_loss / target_words))
-      log_string += " noise acc={0:<5.4f}".format(total_noise_corrects / target_words)
-      log_string += " transfer acc={0:<5.4f}".format(total_transfer_corrects / target_words)
+      log_string += " bt_ppl={0:<8.2f}".format(np.exp(total_bt_loss / target_words))
+      log_string += " n_ppl={0:<8.2f}".format(np.exp(total_noise_loss / target_words))
+      log_string += " n_acc={0:<5.4f}".format(total_noise_corrects / target_words)
+      log_string += " bt_acc={0:<5.4f}".format(total_transfer_corrects / target_words)
 
       # noise weight
       log_string += " nw={:.4f}".format(hparams.noise_weight)
@@ -494,7 +538,8 @@ def train():
         set_lr(optim, lr)
       # reset counter after eval
       log_start_time = time.time()
-      target_words = total_noise_corrects = total_transfer_corrects = total_loss = 0
+      target_words = total_sents = total_noise_corrects = total_transfer_corrects = total_loss = 0
+      total_bt_loss = total_noise_loss = total_KL_loss = 0.
       target_rules = target_total = target_eos = 0
       total_word_loss = total_rule_loss = total_eos_loss = 0
     if args.patience >= 0:

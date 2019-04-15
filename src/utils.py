@@ -23,16 +23,25 @@ def get_criterion(hparams):
   return crit
 
 def get_performance(crit, trans_logits, noise_logits, labels, hparams, sum_loss=True):
+  trans_logits = trans_logits.view(-1, hparams.src_vocab_size)
   mask = (labels == hparams.pad_id)
   trans_loss = crit(trans_logits, labels)
-  noise_loss = crit(noise_logits, labels)
-  _, preds = torch.max(noise_logits, dim=1)
   _, trans_preds = torch.max(trans_logits, dim=1)
-  acc = torch.eq(preds, labels).int().masked_fill_(mask, 0).sum()
-  trans_acc = torch.eq(trans_preds, labels).int().masked_fill_(mask, 0).sum()
-  loss = trans_loss.sum() + hparams.noise_weight * noise_loss.sum()
+  trans_acc = torch.eq(trans_preds, labels).int().masked_fill_(mask, 0).sum().item()
+  if hparams.noise_flag:
+    noise_logits = noise_logits.view(-1, hparams.src_vocab_size)
+    noise_loss = crit(noise_logits, labels)
+    _, preds = torch.max(noise_logits, dim=1)
+    acc = torch.eq(preds, labels).int().masked_fill_(mask, 0).sum().item()
+  else:
+    noise_loss = torch.zeros((1), requires_grad=False, device=hparams.device)
+    acc = 0
+
+  trans_loss = trans_loss.sum()
+  noise_loss = noise_loss.sum()
+  loss = trans_loss + hparams.noise_weight * noise_loss
   #loss = noise_loss.sum()
-  return loss, acc, trans_acc
+  return loss, trans_loss, noise_loss, acc, trans_acc
 
 def count_params(params):
   num_params = sum(p.data.nelement() for p in params)

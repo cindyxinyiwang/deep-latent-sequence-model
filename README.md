@@ -11,8 +11,9 @@
 ## TODO
 
 * ~~(junxian): noise module with and without bpe encoding~~
-* (cindy): bpe preprocessed dataset ?
-* (cindy): add sampling decoding options in back-translation
+* ~~(cindy): bpe preprocessed dataset ?~~
+* ~~(cindy): add sampling decoding options in back-translation~~
+* (junxian): restrict each batch has the same y would accelarate LM prior computation
 
 
 ## Pre-trained LM test PPL

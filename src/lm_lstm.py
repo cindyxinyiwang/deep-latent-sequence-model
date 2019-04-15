@@ -11,7 +11,6 @@ import torch.nn.functional as F
 from torch.nn.utils.rnn import pad_packed_sequence, pack_padded_sequence
 from data_utils import DataUtil
 from hparams import *
-from model import *
 from utils import *
 
 import numpy as np
@@ -53,22 +52,12 @@ class LSTM_LM(nn.Module):
     self.reset_parameters(model_init, emb_init)
 
   def reset_parameters(self, model_init, emb_init):
-    # for name, param in self.lstm.named_parameters():
-    #     # self.initializer(param)
-    #     if 'bias' in name:
-    #         nn.init.constant_(param, 0.0)
-    #         # model_init(param)
-    #     elif 'weight' in name:
-    #         model_init(param)
-
-    # model_init(self.trans_linear.weight)
-    # model_init(self.pred_linear.weight)
     for param in self.parameters():
       model_init(param)
     emb_init(self.embed.weight)
 
 
-  def decode(self, x, x_len):
+  def decode(self, x, x_len, gumbel_softmax=False):
     """
     Args:
       x: (batch_size, seq_len)
@@ -78,10 +67,15 @@ class LSTM_LM(nn.Module):
     # not predicting start symbol
     # sents_len -= 1
 
-    batch_size, seq_len = x.size()
+    if gumbel_softmax:
+      batch_size, seq_len, _ = x.size()
+      word_embed = x @ self.embed.weight
+    else:
+      batch_size, seq_len = x.size()
 
-    # (batch_size, seq_len, ni)
-    word_embed = self.embed(x)
+      # (batch_size, seq_len, ni)
+      word_embed = self.embed(x)
+
     word_embed = self.dropout_in(word_embed)
     packed_embed = pack_padded_sequence(word_embed, x_len, batch_first=True)
     
@@ -97,11 +91,13 @@ class LSTM_LM(nn.Module):
 
     return output_logits
 
-  def reconstruct_error(self, x, x_len):
+  def reconstruct_error(self, x, x_len, gumbel_softmax=False, x_mask=None):
     """Cross Entropy in the language case
     Args:
       x: (batch_size, seq_len)
       x_len: list of x lengths
+      x_mask: required if gumbel_softmax is True, 1 denotes mask,
+              size (batch_size, seq_len)
     Returns:
       loss: (batch_size). Loss across different sentences
     """
@@ -112,24 +108,32 @@ class LSTM_LM(nn.Module):
     # remove start symbol
     tgt = x[:, 1:]
 
-    batch_size, seq_len = src.size()
+    if gumbel_softmax:
+      batch_size, seq_len, _ = src.size()
+    else:
+      batch_size, seq_len = src.size()
 
     x_len = [s - 1 for s in x_len]
 
     # (batch_size, seq_len, vocab_size)
-    output_logits = self.decode(src, x_len)
+    output_logits = self.decode(src, x_len, gumbel_softmax)
 
-    tgt = tgt.contiguous().view(-1)
-
-    # (batch_size * seq_len)
-    loss = self.loss(output_logits.view(-1, output_logits.size(2)),
-               tgt)
+    if gumbel_softmax:
+      log_p = F.log_softmax(output_logits, dim=2)
+      x_mask = x_mask[:, 1:]
+      loss = -((log_p * tgt).sum(dim=2) * (1. - x_mask)).sum(dim=1)
+    else:
+      tgt = tgt.contiguous().view(-1)
+      # (batch_size * seq_len)
+      loss = self.loss(output_logits.view(-1, output_logits.size(2)),
+                 tgt)
+      loss = loss.view(batch_size, -1).sum(-1)
 
 
     # (batch_size)
-    return loss.view(batch_size, -1).sum(-1)
+    return loss
 
-  def log_probability(self, x):
+  def log_probability(self, x, x_len, gumbel_softmax=False, x_mask=None):
     """Cross Entropy in the language case
     Args:
       x: (batch_size, seq_len)
@@ -137,7 +141,7 @@ class LSTM_LM(nn.Module):
       log_p: (batch_size).
     """
 
-    return -self.reconstruct_error(x)
+    return -self.reconstruct_error(x, x_len, gumbel_softmax, x_mask)
 
 def init_args():
   parser = argparse.ArgumentParser(description='language model')
