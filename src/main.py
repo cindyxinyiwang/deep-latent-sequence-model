@@ -161,6 +161,8 @@ parser.add_argument("--gumbel_softmax", action="store_true", help="use gumbel so
 parser.add_argument("--lm", action="store_true", help="whether including the LM loss")
 parser.add_argument("--reconstruct", action="store_true", help="whether perform reconstruction or transfer when validating bleu")
 
+parser.add_argument("--decode_on_y", action="store_true", help="whether to use cond on y at every step when decoding")
+parser.add_argument("--eval_cls", action="store_true", help="whether to use classifier to eval")
 args = parser.parse_args()
 
 if args.bpe_ngram: args.n = None
@@ -401,6 +403,8 @@ def train():
     classifier_file_name = os.path.join(args.classifier_dir, "model.pt")
     print("Loading model from '{0}'".format(classifier_file_name))
     classifier = torch.load(classifier_file_name).to(hparams.device)
+  else:
+    classifier = None
 
   if args.reset_hparams:
     lr = args.lr
