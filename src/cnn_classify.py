@@ -87,7 +87,7 @@ def test(model, data, hparams, test_src_file, test_trg_file, negate=False):
   while True:
     x, x_mask, x_count, x_len, x_pos_emb_idxs, \
     y, y_mask, y_count, y_len, y_pos_emb_idxs, \
-    y_neg, batch_size, end_of_epoch, _ = data.next_test(test_batch_size=hparams.batch_size)
+    y_neg, batch_size, end_of_epoch, _ = data.next_test(test_batch_size=hparams.valid_batch_size)
     # clear GPU memory
     gc.collect()
 
@@ -435,6 +435,7 @@ if __name__ == "__main__":
   parser.add_argument("--gumbel_softmax", action="store_true", help="use gumbel softmax in back-translation")
   
   parser.add_argument("--reconstruct", action="store_true", help="whether perform reconstruction or transfer when validating bleu")
+  parser.add_argument("--negate", action="store_true", help="whether negate the labels when evaluating")
   args = parser.parse_args()
 
   if not args.decode:
@@ -471,6 +472,8 @@ if __name__ == "__main__":
     print("Loading model from '{0}'".format(model_file_name))
     model = torch.load(model_file_name)
     model.eval()
-    cur_acc, cur_loss = test(model, data, hparams, args.test_src_file, args.test_trg_file, negate=False)
+    hparams.valid_batch_size = args.valid_batch_size
+    with torch.no_grad():
+        cur_acc, cur_loss = test(model, data, hparams, args.test_src_file, args.test_trg_file, negate=args.negate)
     print("test_acc={}, test_loss={}".format(cur_acc, cur_loss))
 

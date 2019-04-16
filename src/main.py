@@ -161,6 +161,10 @@ parser.add_argument("--gumbel_softmax", action="store_true", help="use gumbel so
 parser.add_argument("--lm", action="store_true", help="whether including the LM loss")
 parser.add_argument("--reconstruct", action="store_true", help="whether perform reconstruction or transfer when validating bleu")
 
+parser.add_argument("--decode_on_y", action="store_true", help="whether to use cond on y at every step when decoding")
+parser.add_argument("--eval_cls", action="store_true", help="whether to use classifier to eval")
+
+parser.add_argument("--max_pool_k_size", type=int, default=0, help="max pooling kernel size")
 args = parser.parse_args()
 
 if args.bpe_ngram: args.n = None
@@ -173,12 +177,11 @@ if args.output_dir == "":
 
 args.device = torch.device("cuda" if args.cuda else "cpu")
 
-if args.lm:
-    config_file = "config.config_{}".format(args.dataset)
-    params = importlib.import_module(config_file).params_main
-    args = argparse.Namespace(**params, **vars(args))
+config_file = "config.config_{}".format(args.dataset)
+params = importlib.import_module(config_file).params_main
+args = argparse.Namespace(**params, **vars(args))
 
-def eval(model, data, crit, step, hparams, eval_bleu=False,
+def eval(model, classifier, data, crit, step, hparams, eval_bleu=False,
          valid_batch_size=20, tr_logits=None):
   print("Eval at step {0}. valid_batch_size={1}".format(step, valid_batch_size))
 
@@ -204,7 +207,7 @@ def eval(model, data, crit, step, hparams, eval_bleu=False,
     # next batch
     x_valid, x_mask, x_count, x_len, x_pos_emb_idxs, \
     y_valid, y_mask, y_count, y_len, y_pos_emb_idxs, \
-    y_neg, batch_size, end_of_epoch, _ = data.next_dev(dev_batch_size=128)
+    y_neg, batch_size, end_of_epoch, _ = data.next_dev(dev_batch_size=hparams.valid_batch_size)
     #print(x_valid)
     #print(x_mask)
     #print(y_valid)
@@ -241,12 +244,13 @@ def eval(model, data, crit, step, hparams, eval_bleu=False,
   # BLEU eval
   if eval_bleu:
     hyps = []
+    dev_batch_size = hparams.valid_batch_size if hparams.beam_size == 1 else 1
     while True:
       gc.collect()
       x_valid, x_mask, x_count, x_len, \
       x_pos_emb_idxs, y_valid, y_mask, \
       y_count, y_len, y_pos_emb_idxs, \
-      y_neg, batch_size, end_of_epoch, index = data.next_dev(dev_batch_size=128)
+      y_neg, batch_size, end_of_epoch, index = data.next_dev(dev_batch_size=dev_batch_size)
       if hparams.reconstruct:
           y_neg = y_valid
       hs = model.translate(
@@ -267,13 +271,15 @@ def eval(model, data, crit, step, hparams, eval_bleu=False,
       out_file.write(line + '\n')
       out_file.flush()
     out_file.close()
+
+  if hparams.eval_cls:
     # classify accuracy
-    classifier_file_name = os.path.join(args.classifier_dir, "model.pt")
-    print("Loading model from '{0}'".format(classifier_file_name))
-    classifier = torch.load(classifier_file_name)
+    # print("Loading model from '{0}'".format(classifier_file_name))
+    # classifier = torch.load(classifier_file_name)
     classifier.eval()
     cur_acc, cur_loss = test(classifier, data, hparams, valid_hyp_file, hparams.dev_trg_file, negate=True)
     print("classifier_acc={}".format(cur_acc))
+
   bt_ppl = np.exp(total_bt_loss / valid_words)
   noise_ppl = np.exp(total_noise_loss / valid_words)
 
@@ -395,6 +401,13 @@ def train():
 
   model.to(hparams.device)
 
+  if args.eval_cls:
+    classifier_file_name = os.path.join(args.classifier_dir, "model.pt")
+    print("Loading model from '{0}'".format(classifier_file_name))
+    classifier = torch.load(classifier_file_name).to(hparams.device)
+  else:
+    classifier = None
+
   if args.reset_hparams:
     lr = args.lr
   crit = get_criterion(hparams)
@@ -511,7 +524,7 @@ def train():
       based_on_bleu = False
       if args.dev_zero: based_on_bleu = True
       with torch.no_grad():
-        val_ppl, val_bleu = eval(model, data, crit, step, hparams, eval_bleu=args.eval_bleu, valid_batch_size=args.valid_batch_size)	
+        val_ppl, val_bleu = eval(model, classifier, data, crit, step, hparams, eval_bleu=args.eval_bleu, valid_batch_size=args.valid_batch_size)	
       if based_on_bleu:
         if best_val_bleu is None or best_val_bleu <= val_bleu:
           save = True 
