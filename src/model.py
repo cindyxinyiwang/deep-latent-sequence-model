@@ -508,8 +508,8 @@ class Seq2Seq(nn.Module):
       length += 1
       y_tm1 = hyp.y
       if self.hparams.decode_on_y:
-        y_tm1 = torch.tensor([y_tm1], dtype=torch.long, 
-          requires_grad=False, device=self.hparams.device)
+        # y_tm1 = torch.tensor([y_tm1], dtype=torch.long, 
+        #   requires_grad=False, device=self.hparams.device)
         y_tm1 = self.decoder.word_emb(y_tm1)
         y_tm1 = torch.cat([y_tm1, attr_emb], dim=-1)
       else:
