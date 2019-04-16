@@ -7,9 +7,10 @@
 export PYTHONPATH="$(pwd)"
 export CUDA_VISIBLE_DEVICES="0"
 
-python3.6 src/cnn_classify.py \
+# python3.6 src/cnn_classify.py \
+CUDA_VISIBLE_DEVICES=$1 python src/cnn_classify.py \
   --dataset yelp \
-  --output_dir "outputs_yelp_classify" \
+  --output_dir "pretrained_classifer/yelp" \
   --clean_mem_every 5 \
   --reset_output_dir \
   --data_path data/test/ \
@@ -18,8 +19,8 @@ python3.6 src/cnn_classify.py \
   --dev_src_file data/yelp/test_600.txt \
   --dev_trg_file data/yelp/test_600.attr \
   --dev_trg_ref data/yelp/test_sub.txt \
-  --test_src_file data/yelp/test.txt \
-  --test_trg_file data/yelp/test.attr \
+  --test_src_file outputs_yelp/yelp_wd0.2_wb0.2_ws1.2_an1_gs1.0/trans.transfer \
+  --test_trg_file data/yelp/test_sub.attr \
   --src_vocab  data/yelp/text.vocab \
   --trg_vocab  data/yelp/attr.vocab \
   --d_word_vec=128 \

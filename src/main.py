@@ -204,7 +204,7 @@ def eval(model, data, crit, step, hparams, eval_bleu=False,
     # next batch
     x_valid, x_mask, x_count, x_len, x_pos_emb_idxs, \
     y_valid, y_mask, y_count, y_len, y_pos_emb_idxs, \
-    y_neg, batch_size, end_of_epoch, _ = data.next_dev(dev_batch_size=128)
+    y_neg, batch_size, end_of_epoch, _ = data.next_dev(dev_batch_size=hparams.valid_batch_size)
     #print(x_valid)
     #print(x_mask)
     #print(y_valid)
@@ -241,12 +241,13 @@ def eval(model, data, crit, step, hparams, eval_bleu=False,
   # BLEU eval
   if eval_bleu:
     hyps = []
+    dev_batch_size = hparams.valid_batch_size if hparams.beam_size == 1 else 1
     while True:
       gc.collect()
       x_valid, x_mask, x_count, x_len, \
       x_pos_emb_idxs, y_valid, y_mask, \
       y_count, y_len, y_pos_emb_idxs, \
-      y_neg, batch_size, end_of_epoch, index = data.next_dev(dev_batch_size=128)
+      y_neg, batch_size, end_of_epoch, index = data.next_dev(dev_batch_size=dev_batch_size)
       if hparams.reconstruct:
           y_neg = y_valid
       hs = model.translate(
