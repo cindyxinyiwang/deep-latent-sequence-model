@@ -152,6 +152,9 @@ def init_args():
   parser.add_argument("--decode", action="store_true", help="whether to decode only")
   parser.add_argument("--max_len", type=int, default=10000, help="maximum len considered on the target side")
 
+
+  parser.add_argument('--test_src_file', type=str, default="")
+  parser.add_argument('--test_trg_file', type=str, default="")
   parser.add_argument("--shuffle_train", action="store_true", help="load an existing model")
 
 
@@ -178,6 +181,10 @@ def init_args():
 
   args = argparse.Namespace(**params, **vars(args))
 
+  if args.eval_from != "":
+    args.dev_src_file = args.test_src_file
+    args.dev_trg_file = args.test_trg_file
+
   np.random.seed(args.seed)
   torch.manual_seed(args.seed)
   if args.cuda:
@@ -194,7 +201,7 @@ def test(model, data, hparams):
     x_valid, x_mask, x_count, x_len, \
     x_pos_emb_idxs, y_valid, y_mask, \
     y_count, y_len, y_pos_emb_idxs, \
-    y_neg, batch_size, end_of_epoch = data.next_dev(dev_batch_size=hparams.batch_size)
+    y_neg, batch_size, end_of_epoch, _ = data.next_dev(dev_batch_size=hparams.batch_size)
 
     report_words += (x_count - batch_size)
     report_sents += batch_size
@@ -238,7 +245,8 @@ def train(args):
   if hparams.eval_from != "":
     model = torch.load(hparams.eval_from)
     model.to(hparams.device)
-    test(model, data, hparams)
+    with torch.no_grad():
+        test(model, data, hparams)
 
     return 
 
@@ -255,7 +263,7 @@ def train(args):
     x_train, x_mask, x_count, x_len, x_pos_emb_idxs, \
     y_train, y_mask, y_count, y_len, y_pos_emb_idxs, \
     y_sampled, y_sampled_mask, y_sampled_count, y_sampled_len, \
-    y_pos_emb_idxs, batch_size,  eop = data.next_train()
+    y_pos_emb_idxs, batch_size,  eop, _ = data.next_train()
 
 
     report_words += (x_count - batch_size)

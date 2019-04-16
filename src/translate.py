@@ -132,8 +132,9 @@ with torch.no_grad():
       out_file.write(line + '\n')
       out_file.flush()
       
-    pbar.update(test_batch_size)
+    pbar.update(batch_size)
     if end_of_epoch:
+      pbar.close()
       break    
 
 if args.debug:
