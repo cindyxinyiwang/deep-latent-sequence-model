@@ -162,7 +162,6 @@ parser.add_argument("--lm", action="store_true", help="whether including the LM 
 parser.add_argument("--reconstruct", action="store_true", help="whether perform reconstruction or transfer when validating bleu")
 
 parser.add_argument("--decode_on_y", action="store_true", help="whether to use cond on y at every step when decoding")
-parser.add_argument("--eval_cls", action="store_true", help="whether to use classifier to eval")
 args = parser.parse_args()
 
 if args.bpe_ngram: args.n = None
