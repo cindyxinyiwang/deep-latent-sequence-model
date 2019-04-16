@@ -34,8 +34,8 @@ class MlpAttn(nn.Module):
     att_src_hidden = torch.tanh(k + self.w_trg(q).unsqueeze(1))
     # (batch_size, len_k)
     att_src_weights = self.w_att(att_src_hidden).squeeze(2)
-    if not attn_mask is None:
-      att_src_weights.data.masked_fill_(attn_mask, -self.hparams.inf)
+    #if not attn_mask is None:
+    #  att_src_weights.data.masked_fill_(attn_mask, -self.hparams.inf)
     att_src_weights = F.softmax(att_src_weights, dim=-1)
     att_src_weights = self.dropout(att_src_weights)
     ctx = torch.bmm(att_src_weights.unsqueeze(1), v).squeeze(1)
@@ -89,6 +89,9 @@ class Encoder(nn.Module):
     #enc_output, (ht, ct) = self.layer(word_emb)
     # enc_output = enc_output.permute(1, 0, 2)
     
+    # max pooling
+    if self.hparams.max_pool_k_size > 0:
+      enc_output = F.max_pool1d(enc_output.permute(0, 2, 1), kernel_size=self.hparams.max_pool_k_size, padding=(self.hparams.max_pool_k_size // 2)).permute(0, 2, 1)
     dec_init_cell = self.bridge(torch.cat([ct[0], ct[1]], 1))
     dec_init_state = F.tanh(dec_init_cell)
     dec_init = (dec_init_state, dec_init_cell)

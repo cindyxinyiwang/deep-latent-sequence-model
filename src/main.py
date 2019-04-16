@@ -163,6 +163,8 @@ parser.add_argument("--reconstruct", action="store_true", help="whether perform 
 
 parser.add_argument("--decode_on_y", action="store_true", help="whether to use cond on y at every step when decoding")
 parser.add_argument("--eval_cls", action="store_true", help="whether to use classifier to eval")
+
+parser.add_argument("--max_pool_k_size", type=int, default=0, help="max pooling kernel size")
 args = parser.parse_args()
 
 if args.bpe_ngram: args.n = None
