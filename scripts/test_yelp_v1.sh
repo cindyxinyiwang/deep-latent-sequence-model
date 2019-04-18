@@ -38,6 +38,7 @@ python src/main.py \
   --word_dropout 0.1 \
   --word_shuffle 3 \
   --cuda \
-  --temperature 0.01 \
+  --temperature 1 \
   --max_pool_k_size 5 \
-  # --lm
+  --gumbel_softmax \
+  --lm
