@@ -211,6 +211,25 @@ class Seq2Seq(nn.Module):
     else:
       self.LM = None
 
+  def set_lm(self):
+    if self.hparams.lm:
+      self.LM0 = torch.load(self.hparams.lm_style0)
+      self.LM1 = torch.load(self.hparams.lm_style1)
+
+      for param in self.LM0.parameters():
+          param.requires_grad = False
+
+      for param in self.LM1.parameters():
+          param.requires_grad = False
+
+      self.LM0.eval()
+      self.LM1.eval()
+
+      self.LM = torch.nn.ModuleList([self.LM0, self.LM1])
+    else:
+      self.LM = None
+
+
   def forward(self, x_train, x_mask, x_len, x_pos_emb_idxs, y_train, y_mask, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_len):
     y_len = torch.tensor(y_len, dtype=torch.float, device=self.hparams.device, requires_grad=False)
     y_sampled_len = torch.tensor(y_sampled_len, dtype=torch.float, device=self.hparams.device, 
@@ -240,6 +259,7 @@ class Seq2Seq(nn.Module):
       KL_loss = 0. - log_prior
 
       x_trans_len_t = torch.tensor(x_trans_len, dtype=torch.float, requires_grad=False, device=self.hparams.device)
+      x_trans_len_t = x_trans_len_t - 1
       KL_loss = KL_loss / x_trans_len_t
     else:
       KL_loss = None
@@ -287,11 +307,25 @@ class Seq2Seq(nn.Module):
     x_mask = x_mask.float()
     y_sampled = y_sampled.squeeze(-1).float()
 
-    # (batch_size)
-    log_prior0 = self.LM[0].log_probability(x, x_len, gumbel_softmax=True, x_mask=x_mask)
-    log_prior1 = self.LM[1].log_probability(x, x_len, gumbel_softmax=True, x_mask=x_mask)
+    # remove start symbol
+    tgt = x[:, 1:]
 
-    return (1. - y_sampled) * log_prior0 + y_sampled * log_prior1
+    logits_0 = self.LM[0].compute_gumbel_logits(x, x_len)
+    logits_1 = self.LM[1].compute_gumbel_logits(x, x_len)
+
+    x_mask = x_mask[:, 1:]
+
+    log_p0 = F.log_softmax(logits_0, dim=2)
+    log_p1 = F.log_softmax(logits_0, dim=2)
+
+    if self.hparams.lm_stop_grad:
+        log_p0 = log_p0.detach()
+        log_p1 = log_p1.detach()
+
+    ll0 = ((log_p0 * tgt).sum(dim=2) * (1. - x_mask)).sum(dim=1)
+    ll1 = ((log_p1 * tgt).sum(dim=2) * (1. - x_mask)).sum(dim=1)
+
+    return (1. - y_sampled) * ll0 + y_sampled * ll1
 
 
   def get_translations(self, x_train, x_mask, x_len, y_sampled, y_sampled_mask, y_sampled_len):
@@ -385,30 +419,34 @@ class Seq2Seq(nn.Module):
         stack_sample.append(torch.mul(sampled_y, mask.float().unsqueeze(1)).unsqueeze(1))
         # neg_entropy = neg_entropy + ((F.log_softmax(logits, dim=1) * sampled_y).sum(dim=1) * mask.float()).detach()
 
-      mask = (length < (x_len_t-1)).float()
+      if self.hparams.gs_soft:
+        mask = (length < (x_len_t-1)).float()
+
       for i in range(batch_size):
         if mask[i].item():
           trans_len[i] += 1
           decoded_batch[i].append(sampled_y[i].unsqueeze(0))
           if sampled_y[i, self.hparams.eos_id].item() == 1:
             end_flag[i] = 1
-        elif length == (x_len[i] -1):
+        elif length == (x_len[i] -1) and self.hparams.gs_soft:
           decoded_batch[i].append(eos_vec.clone())
           
           trans_len[i] += 1
         else:
           decoded_batch[i].append(pad_vec.clone())
 
-      # mask = torch.mul((sampled_y != end_symbol).sum(1) > 0, mask)
+      if not self.hparams.gs_soft:
+        mask = torch.mul((sampled_y != end_symbol).sum(1) > 0, mask)
       
 
-    # if length >= max_len and mask.sum().item() != 0:
-    #   for i, batch in enumerate(decoded_batch):
-    #     if end_flag[i] == 0:
-    #       batch.append(eos_vec.clone())
-    #       trans_len[i] += 1
-    #     else:
-    #       batch.append(pad_vec.clone())
+    if not self.hparams.gs_soft:
+      if length >= max_len and mask.sum().item() != 0:
+        for i, batch in enumerate(decoded_batch):
+          if end_flag[i] == 0:
+            batch.append(eos_vec.clone())
+            trans_len[i] += 1
+          else:
+            batch.append(pad_vec.clone())
 
     for i in range(batch_size):
       decoded_batch[i] = torch.cat(decoded_batch[i], dim=0).unsqueeze(0)

@@ -41,8 +41,12 @@ CUDA_VISIBLE_DEVICES=$1 python src/main.py \
   --temperature 1. \
   --anneal_epoch 10000 \
   --max_pool_k_size 10 \
-  --max_trans_len 20 \
-  --klw 1.0 \
+  --max_trans_len 50 \
+  --klw 0.1 \
   --gumbel_softmax \
   --lm \
+  --always_save \
   --gs_soft \
+  # --lm_stop_grad \
+
+  

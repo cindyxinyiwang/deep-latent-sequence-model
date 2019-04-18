@@ -1,6 +1,6 @@
 
 
-python src/lm_lstm.py \
+python -m pdb src/lm_lstm.py \
     --dataset yelp \
     --style $1 \
     --eval_from $2 \

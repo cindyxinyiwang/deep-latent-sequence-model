@@ -166,6 +166,7 @@ parser.add_argument("--decode_on_y", action="store_true", help="whether to use c
 parser.add_argument("--max_pool_k_size", type=int, default=0, help="max pooling kernel size")
 parser.add_argument("--gs_soft", action="store_true")
 parser.add_argument("--klw", type=float, default=1.)
+parser.add_argument("--lm_stop_grad", action="store_false")
 args = parser.parse_args()
 
 if args.bpe_ngram: args.n = None
@@ -229,7 +230,7 @@ def eval(model, classifier, data, crit, step, hparams, eval_bleu=False,
 
     labels = x_valid[:,1:].contiguous().view(-1)
     val_loss, trans_loss, noise_loss, val_acc, val_transfer_acc = \
-                get_performance(crit, trans_logits, noise_logits, labels, hparams)
+                get_performance(crit, trans_logits, noise_logits, labels, hparams, x_len)
 
     if hparams.lm:
         val_loss = val_loss + hparams.klw * KL_loss.sum()
@@ -403,6 +404,7 @@ def train():
     cur_attempt = 0
     lr = hparams.lr
 
+  model.set_lm()
   model.to(hparams.device)
 
   if args.eval_cls:
@@ -445,7 +447,8 @@ def train():
     labels = x_train[:, 1:].contiguous().view(-1)
 
     cur_tr_loss, trans_loss, noise_loss, cur_tr_acc, cur_tr_transfer_acc = get_performance(crit, trans_logits, 
-        noise_logits, labels, hparams)
+        noise_logits, labels, hparams, x_len)
+
     if hparams.lm:
         cur_tr_loss = cur_tr_loss + hparams.klw * KL_loss.sum()
         total_KL_loss += KL_loss.sum().item()
