@@ -92,8 +92,13 @@ class DataUtil(object):
     x_train, x_mask, x_count, x_len, x_pos_emb_idxs = self._pad(x_train, self.hparams.pad_id)
     y_train, y_mask, y_count, y_len, y_pos_emb_idxs = self._pad(y_train, self.hparams.trg_pad_id)
     # sample some y
-    y_sampled = [self.sample_y() for _ in range(batch_size)]
-    y_sampled, y_sampled_mask, y_sampled_count, y_sampled_len, y_sampled_pos_emb_idxs = self._pad(y_sampled, self.hparams.trg_pad_id)
+    # y_sampled = [self.sample_y() for _ in range(batch_size)]
+    # y_sampled, y_sampled_mask, y_sampled_count, y_sampled_len, y_sampled_pos_emb_idxs = self._pad(y_sampled, self.hparams.trg_pad_id)
+    y_sampled = 1. - y_train
+    y_sampled_mask = y_mask
+    y_sampled_count = y_count
+    y_sampled_len = y_len
+    y_sampled_pos_emb_idxs = y_pos_emb_idxs
 
     if self.train_index >= self.n_train_batches:
       self.reset_train()

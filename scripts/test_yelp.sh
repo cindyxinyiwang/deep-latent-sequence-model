@@ -32,12 +32,17 @@ CUDA_VISIBLE_DEVICES=$1 python src/main.py \
   --lr_dec 0.8 \
   --dropout 0.3 \
   --max_len 10000 \
-  --seed 0 \
+  --seed 30 \
   --beam_size 1 \
-  --word_blank 0.2 \
-  --word_dropout 0.2 \
-  --word_shuffle 1.2 \
+  --word_blank 0. \
+  --word_dropout 0. \
+  --word_shuffle 0. \
   --cuda \
   --temperature 1. \
+  --anneal_epoch 10000 \
+  --max_pool_k_size 10 \
+  --max_trans_len 20 \
+  --klw 1.0 \
   --gumbel_softmax \
-  # --lm
+  --lm \
+  --gs_soft \

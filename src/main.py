@@ -162,9 +162,10 @@ parser.add_argument("--lm", action="store_true", help="whether including the LM 
 parser.add_argument("--reconstruct", action="store_true", help="whether perform reconstruction or transfer when validating bleu")
 
 parser.add_argument("--decode_on_y", action="store_true", help="whether to use cond on y at every step when decoding")
-parser.add_argument("--eval_cls", action="store_true", help="whether to use classifier to eval")
 
 parser.add_argument("--max_pool_k_size", type=int, default=0, help="max pooling kernel size")
+parser.add_argument("--gs_soft", action="store_true")
+parser.add_argument("--klw", type=float, default=1.)
 args = parser.parse_args()
 
 if args.bpe_ngram: args.n = None
@@ -172,8 +173,11 @@ if args.bpe_ngram: args.n = None
 if args.output_dir == "":
     dn = "gs{}".format(args.temperature) if args.gumbel_softmax else "t{}".format(args.temperature)
     lm = "_lm" if args.lm else ""
-    args.output_dir = "outputs_{}/{}_wd{}_wb{}_ws{}_an{}_{}{}/".format(args.dataset, args.dataset,
-        args.word_dropout, args.word_blank, args.word_shuffle, args.anneal_epoch, dn, lm)
+    decode_y = "_seqy" if args.decode_on_y else ""
+    gs_soft = "_soft" if args.gs_soft else "_hard"
+    args.output_dir = "outputs_{}_debug/{}_wd{}_wb{}_ws{}_an{}_pool{}_klw{}_{}{}{}{}/".format(args.dataset, args.dataset,
+        args.word_dropout, args.word_blank, args.word_shuffle, args.anneal_epoch, 
+        args.max_pool_k_size, args.klw, dn, lm, decode_y, gs_soft)
 
 args.device = torch.device("cuda" if args.cuda else "cpu")
 
@@ -228,7 +232,7 @@ def eval(model, classifier, data, crit, step, hparams, eval_bleu=False,
                 get_performance(crit, trans_logits, noise_logits, labels, hparams)
 
     if hparams.lm:
-        val_loss = val_loss + KL_loss.sum()
+        val_loss = val_loss + hparams.klw * KL_loss.sum()
         total_KL_loss += KL_loss.sum().item()
 
     n_batches += 1
@@ -428,6 +432,7 @@ def train():
   dev_zero = args.dev_zero
   tr_loss, update_batch_size = None, 0
   hparams.noise_weight = 1.
+  hparams.gs_temp = 1.
   anneal_rate = 1.0 / (data.train_size * args.anneal_epoch // hparams.batch_size)
   while True:
     step += 1
@@ -442,12 +447,15 @@ def train():
     cur_tr_loss, trans_loss, noise_loss, cur_tr_acc, cur_tr_transfer_acc = get_performance(crit, trans_logits, 
         noise_logits, labels, hparams)
     if hparams.lm:
-        cur_tr_loss = cur_tr_loss + KL_loss.sum()
+        cur_tr_loss = cur_tr_loss + hparams.klw * KL_loss.sum()
         total_KL_loss += KL_loss.sum().item()
 
     hparams.noise_weight = max(0., hparams.noise_weight - anneal_rate)
     if hparams.noise_weight == 0:
         hparams.noise_flag = False
+
+    if eop:
+        hparams.gs_temp = max(0.001, hparams.gs_temp * 0.5)
 
     total_loss += cur_tr_loss.item()
     total_bt_loss += trans_loss.item()
@@ -523,6 +531,7 @@ def train():
       # based_on_bleu = args.eval_bleu and best_val_ppl is not None and best_val_ppl <= args.ppl_thresh
       based_on_bleu = False
       if args.dev_zero: based_on_bleu = True
+      print("target words: {}".format(target_words))
       with torch.no_grad():
         val_ppl, val_bleu = eval(model, classifier, data, crit, step, hparams, eval_bleu=args.eval_bleu, valid_batch_size=args.valid_batch_size)	
       if based_on_bleu:

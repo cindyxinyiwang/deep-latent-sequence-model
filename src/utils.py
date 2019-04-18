@@ -59,7 +59,7 @@ def get_performance(crit, trans_logits, noise_logits, labels, hparams, sum_loss=
   noise_loss = noise_loss.sum()
   loss = trans_loss + hparams.noise_weight * noise_loss
   #loss = noise_loss.sum()
-  return loss, trans_loss, noise_loss, acc, trans_acc
+  return noise_loss, trans_loss, noise_loss, acc, trans_acc
 
 def count_params(params):
   num_params = sum(p.data.nelement() for p in params)
