@@ -164,11 +164,12 @@ parser.add_argument("--reconstruct", action="store_true", help="whether perform 
 parser.add_argument("--decode_on_y", action="store_true", help="whether to use cond on y at every step when decoding")
 
 parser.add_argument("--max_pool_k_size", type=int, default=0, help="max pooling kernel size")
-parser.add_argument("--gs_soft", action="store_true")
-parser.add_argument("--klw", type=float, default=1.)
+parser.add_argument("--gs_soft", action="store_true", help="whether soft gumbel softmax")
+parser.add_argument("--klw", type=float, default=1., help="KL loss weight")
 parser.add_argument("--lm_stop_grad", action="store_true")
-parser.add_argument("--bt", action="store_true")
-parser.add_argument("--bt_stop_grad", action="store_true")
+parser.add_argument("--bt", action="store_true", help="whether use back translation loss")
+parser.add_argument("--bt_stop_grad", action="store_true", 
+    help="whether stop gradients through back translation, ignored when gumbel_softmax is false")
 args = parser.parse_args()
 
 if args.bpe_ngram: args.n = None
@@ -449,7 +450,7 @@ def train():
   else:
     hparams.noise_weight = 1.
     anneal_rate = 1.0 / (data.train_size * args.anneal_epoch // hparams.batch_size)
-    
+
   hparams.gs_temp = 1.
   while True:
     step += 1
