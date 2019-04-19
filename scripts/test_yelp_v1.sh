@@ -7,7 +7,7 @@
 export PYTHONPATH="$(pwd)"
 export CUDA_VISIBLE_DEVICES="2"
 
-python -m pdb src/main.py \
+CUDA_VISIBLE_DEVICES=$1 python src/main.py \
   --dataset yelp \
   --clean_mem_every 5 \
   --reset_output_dir \
@@ -41,4 +41,5 @@ python -m pdb src/main.py \
   --cuda \
   --temperature 0.01 \
   --max_pool_k_size 5 \
+  --bt \
   # --lm

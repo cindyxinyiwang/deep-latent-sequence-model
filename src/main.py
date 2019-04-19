@@ -166,7 +166,9 @@ parser.add_argument("--decode_on_y", action="store_true", help="whether to use c
 parser.add_argument("--max_pool_k_size", type=int, default=0, help="max pooling kernel size")
 parser.add_argument("--gs_soft", action="store_true")
 parser.add_argument("--klw", type=float, default=1.)
-parser.add_argument("--lm_stop_grad", action="store_false")
+parser.add_argument("--lm_stop_grad", action="store_true")
+parser.add_argument("--bt", action="store_true")
+parser.add_argument("--bt_stop_grad", action="store_false")
 args = parser.parse_args()
 
 if args.bpe_ngram: args.n = None
@@ -176,9 +178,13 @@ if args.output_dir == "":
     lm = "_lm" if args.lm else ""
     decode_y = "_seqy" if args.decode_on_y else ""
     gs_soft = "_soft" if args.gs_soft else "_hard"
-    args.output_dir = "outputs_{}_debug/{}_wd{}_wb{}_ws{}_an{}_pool{}_klw{}_{}{}{}{}/".format(args.dataset, args.dataset,
+    lm_stop_grad = "_lmsg" if args.lm_stop_grad and args.lm else ""
+    bt = "_bt" if args.bt else ""
+    bt_stop_grad = "_btsg" if args.bt_stop_grad and args.bt else ""
+
+    args.output_dir = "outputs_{}_debug/{}_wd{}_wb{}_ws{}_an{}_pool{}_klw{}_lr{}_{}{}{}{}{}{}{}/".format(args.dataset, args.dataset,
         args.word_dropout, args.word_blank, args.word_shuffle, args.anneal_epoch, 
-        args.max_pool_k_size, args.klw, dn, lm, decode_y, gs_soft)
+        args.max_pool_k_size, args.klw, args.lr, dn, lm, bt, decode_y, gs_soft, lm_stop_grad, bt_stop_grad)
 
 args.device = torch.device("cuda" if args.cuda else "cpu")
 
@@ -289,7 +295,7 @@ def eval(model, classifier, data, crit, step, hparams, eval_bleu=False,
   noise_ppl = np.exp(total_noise_loss / valid_words)
 
   log_string = "val_step={0:<6d}".format(step)
-  log_string += " total={0:<6.2f}".format(valid_loss / valid_words)
+  log_string += " total={0:<6.2f}".format(valid_loss / valid_sents)
   log_string += " KL={0:<6.2f}".format(total_KL_loss / valid_sents)
   log_string += " bt_ppl={0:<6.2f}".format(bt_ppl)
   log_string += " n_ppl={0:<6.2f}".format(noise_ppl)
@@ -449,6 +455,8 @@ def train():
     cur_tr_loss, trans_loss, noise_loss, cur_tr_acc, cur_tr_transfer_acc = get_performance(crit, trans_logits, 
         noise_logits, labels, hparams, x_len)
 
+    assert(cur_tr_loss.item() > 0)
+
     if hparams.lm:
         cur_tr_loss = cur_tr_loss + hparams.klw * KL_loss.sum()
         total_KL_loss += KL_loss.sum().item()
@@ -507,7 +515,7 @@ def train():
       log_string = "ep={0:<3d}".format(epoch)
       log_string += " steps={0:<6.2f}".format((step / args.update_batch) / 1000)
       log_string += " lr={0:<9.7f}".format(lr)
-      log_string += " total={0:<7.2f}".format(total_loss / target_words)
+      log_string += " total={0:<7.2f}".format(total_loss / total_sents)
       log_string += " KL={0:<7.2f}".format(total_KL_loss / total_sents)
       log_string += " |g|={0:<5.2f}".format(grad_norm)
 

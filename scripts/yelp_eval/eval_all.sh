@@ -11,7 +11,7 @@ printf "\ntest reference classification\n\n"
 ./scripts/yelp_eval/yelp_classify_test.sh $path data/yelp/test_li.attr
 
 printf "\ntranslate test_0\n\n"
-./scripts/yelp_e3val/translate_yelp.sh $1 data/yelp/test_0.txt data/yelp/test_0.attr transfer_test0.txt
+./scripts/yelp_eval/translate_yelp.sh $1 data/yelp/test_0.txt data/yelp/test_0.attr transfer_test0.txt
 printf "\ntranslate test_1\n\n"
 ./scripts/yelp_eval/translate_yelp.sh $1 data/yelp/test_1.txt data/yelp/test_1.attr transfer_test1.txt
 

@@ -30,6 +30,7 @@ CUDA_VISIBLE_DEVICES=$1 python src/main.py \
   --valid_batch_size 128 \
   --patience 5 \
   --lr_dec 0.8 \
+  --lr 0.0005 \
   --dropout 0.3 \
   --max_len 10000 \
   --seed 30 \
@@ -39,14 +40,17 @@ CUDA_VISIBLE_DEVICES=$1 python src/main.py \
   --word_shuffle 0. \
   --cuda \
   --temperature 1. \
-  --anneal_epoch 10000 \
-  --max_pool_k_size 10 \
+  --anneal_epoch 1 \
+  --max_pool_k_size 5 \
   --max_trans_len 50 \
-  --klw 0.1 \
+  --klw 0.05 \
   --gumbel_softmax \
   --lm \
   --always_save \
-  --gs_soft \
+  # --bt \
   # --lm_stop_grad \
+  # --reconstruct 
+  # --gs_soft \
+  # 
 
   

@@ -240,40 +240,57 @@ class Seq2Seq(nn.Module):
     # index is a list which represents original position in this batch after reordering 
     # translated sentences
     # on-the-fly back translation
-    if not self.hparams.gumbel_softmax:
-      with torch.no_grad():
-        x_trans, x_trans_mask, x_trans_len, index = self.get_translations(x_train, x_mask, x_len, y_sampled, y_sampled_mask, y_sampled_len)
-      index = torch.tensor(index.copy(), dtype=torch.long, requires_grad=False, device=self.hparams.device)
-    else:
-      # with torch.no_grad():
-      x_trans, x_trans_mask, x_trans_len, index, org_index, neg_entropy = self.get_soft_translations(x_train, x_mask, x_len, 
-        y_sampled, y_sampled_mask, y_sampled_len)
+    lm_flag = False
+    if self.hparams.bt:
+      if not self.hparams.gumbel_softmax:
+        with torch.no_grad():
+          x_trans, x_trans_mask, x_trans_len, index = self.get_translations(x_train, x_mask, x_len, y_sampled, y_sampled_mask, y_sampled_len)
+        index = torch.tensor(index.copy(), dtype=torch.long, requires_grad=False, device=self.hparams.device)
+      else:
+        # with torch.no_grad():
+        lm_flag = True
+        x_trans, x_trans_mask, x_trans_len, index, org_index, neg_entropy = self.get_soft_translations(x_train, x_mask, x_len, 
+          y_sampled, y_sampled_mask, y_sampled_len)
 
     if self.hparams.lm:
-      y_sampled_reorder = torch.index_select(y_sampled, 0, org_index)
+      if not lm_flag:
+        x_trans_lm, x_trans_mask_lm, x_trans_len_lm, index_lm, org_index_lm, neg_entropy \
+          = self.get_soft_translations(x_train, x_mask, x_len, y_sampled, 
+            y_sampled_mask, y_sampled_len)   
+      else:
+        x_trans_lm = x_trans
+        x_trans_mask_lm = x_trans_mask     
+        x_trans_len_lm = x_trans_len
+        org_index_lm = org_index
+
+      y_sampled_reorder = torch.index_select(y_sampled, 0, org_index_lm)
       # E_{x ~ q(z|x, y)}[log p(z|y)]
-      log_prior = self.log_prior(x_trans, x_trans_mask, x_trans_len, y_sampled_reorder)
+      log_prior = self.log_prior(x_trans_lm, x_trans_mask_lm, x_trans_len_lm, y_sampled_reorder)
 
       # KL = E_{x ~ q(z|x, y)}[log q(z|x, y) - log p(z|y)]
       # KL_loss = neg_entropy - log_prior
       KL_loss = 0. - log_prior
 
-      x_trans_len_t = torch.tensor(x_trans_len, dtype=torch.float, requires_grad=False, device=self.hparams.device)
+      x_trans_len_t = torch.tensor(x_trans_len_lm, dtype=torch.float, requires_grad=False, device=self.hparams.device)
       x_trans_len_t = x_trans_len_t - 1
       KL_loss = KL_loss / x_trans_len_t
     else:
       KL_loss = None
 
-    # back-translation
-    x_trans_enc, x_trans_init = self.encoder(x_trans, x_trans_len, gumbel_softmax=self.hparams.gumbel_softmax)
-    x_trans_enc = torch.index_select(x_trans_enc, 0, index)
-    new_x_trans_init = []
-    new_x_trans_init.append(torch.index_select(x_trans_init[0], 0, index))
-    new_x_trans_init.append(torch.index_select(x_trans_init[1], 0, index))
-    x_trans_init = (new_x_trans_init[0], new_x_trans_init[1])
+    if self.hparams.bt:
+      # back-translation
+      if self.hparams.bt_stop_grad:
+        x_trans = x_trans.detach()
 
-    x_trans_enc_k = self.enc_to_k(x_trans_enc)
-    trans_logits = self.decoder(x_trans_enc, x_trans_enc_k, x_trans_init, x_trans_mask, y_train, y_mask, y_len, x_train, x_len)
+      x_trans_enc, x_trans_init = self.encoder(x_trans, x_trans_len, gumbel_softmax=self.hparams.gumbel_softmax)
+      x_trans_enc = torch.index_select(x_trans_enc, 0, index)
+      new_x_trans_init = []
+      new_x_trans_init.append(torch.index_select(x_trans_init[0], 0, index))
+      new_x_trans_init.append(torch.index_select(x_trans_init[1], 0, index))
+      x_trans_init = (new_x_trans_init[0], new_x_trans_init[1])
+
+      x_trans_enc_k = self.enc_to_k(x_trans_enc)
+      trans_logits = self.decoder(x_trans_enc, x_trans_enc_k, x_trans_init, x_trans_mask, y_train, y_mask, y_len, x_train, x_len)
 
     # then denoise encode
     if self.hparams.noise_flag:
@@ -281,7 +298,9 @@ class Seq2Seq(nn.Module):
     else:
       noise_logits = None
 
-    trans_logits = noise_logits.new_zeros(noise_logits.size())
+    if not self.hparams.bt:
+      trans_logits = noise_logits.new_zeros(noise_logits.size())
+
     # KL_loss = None
 
     return trans_logits, noise_logits, KL_loss
@@ -316,7 +335,7 @@ class Seq2Seq(nn.Module):
     x_mask = x_mask[:, 1:]
 
     log_p0 = F.log_softmax(logits_0, dim=2)
-    log_p1 = F.log_softmax(logits_0, dim=2)
+    log_p1 = F.log_softmax(logits_1, dim=2)
 
     if self.hparams.lm_stop_grad:
         log_p0 = log_p0.detach()
