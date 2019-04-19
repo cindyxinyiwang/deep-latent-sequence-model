@@ -13,7 +13,6 @@ CUDA_VISIBLE_DEVICES=$1 python src/main.py \
   --reset_output_dir \
   --classifier_dir="pretrained_classifer/yelp" \
   --data_path data/test/ \
-  --output_dir outputs_yelp_v1/ \
   --train_src_file data/yelp/train.txt \
   --train_trg_file data/yelp/train.attr \
   --dev_src_file data/yelp/dev_li.txt \
@@ -35,11 +34,16 @@ CUDA_VISIBLE_DEVICES=$1 python src/main.py \
   --max_len 10000 \
   --seed 0 \
   --beam_size 1 \
-  --word_blank 0.2 \
-  --word_dropout 0.1 \
-  --word_shuffle 3 \
+  --word_blank 0. \
+  --word_dropout 0. \
+  --word_shuffle 0. \
   --cuda \
+  --anneal_epoch 0 \
   --temperature 0.01 \
   --max_pool_k_size 5 \
   --bt \
-  # --lm
+  --klw 0.1 \
+  --lm \
+  --gs_soft \
+  --gumbel_softmax \
+  --bt_stop_grad \

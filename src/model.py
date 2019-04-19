@@ -268,8 +268,8 @@ class Seq2Seq(nn.Module):
       log_prior = self.log_prior(x_trans_lm, x_trans_mask_lm, x_trans_len_lm, y_sampled_reorder)
 
       # KL = E_{x ~ q(z|x, y)}[log q(z|x, y) - log p(z|y)]
-      # KL_loss = neg_entropy - log_prior
-      KL_loss = 0. - log_prior
+      KL_loss = neg_entropy - log_prior
+      # KL_loss = 0. - log_prior
 
       x_trans_len_t = torch.tensor(x_trans_len_lm, dtype=torch.float, requires_grad=False, device=self.hparams.device)
       x_trans_len_t = x_trans_len_t - 1
@@ -279,7 +279,7 @@ class Seq2Seq(nn.Module):
 
     if self.hparams.bt:
       # back-translation
-      if self.hparams.bt_stop_grad:
+      if self.hparams.bt_stop_grad and self.hparams.gumbel_softmax:
         x_trans = x_trans.detach()
 
       x_trans_enc, x_trans_init = self.encoder(x_trans, x_trans_len, gumbel_softmax=self.hparams.gumbel_softmax)
@@ -558,7 +558,7 @@ class Seq2Seq(nn.Module):
       hyps.append(hyp.y[1:-1])
     return hyps
 
-  def sampling_translate(self, x_train, x_mask, x_len, y, y_mask, y_len, max_len=20, greedy=False):
+  def sampling_translate(self, x_train, x_mask, x_len, y, y_mask, y_len, max_len=100, greedy=False):
     batch_size = x_train.size(0)
 
     if isinstance(y_len, list):

@@ -168,7 +168,7 @@ parser.add_argument("--gs_soft", action="store_true")
 parser.add_argument("--klw", type=float, default=1.)
 parser.add_argument("--lm_stop_grad", action="store_true")
 parser.add_argument("--bt", action="store_true")
-parser.add_argument("--bt_stop_grad", action="store_false")
+parser.add_argument("--bt_stop_grad", action="store_true")
 args = parser.parse_args()
 
 if args.bpe_ngram: args.n = None
@@ -177,12 +177,16 @@ if args.output_dir == "":
     dn = "gs{}".format(args.temperature) if args.gumbel_softmax else "t{}".format(args.temperature)
     lm = "_lm" if args.lm else ""
     decode_y = "_seqy" if args.decode_on_y else ""
-    gs_soft = "_soft" if args.gs_soft else "_hard"
-    lm_stop_grad = "_lmsg" if args.lm_stop_grad and args.lm else ""
-    bt = "_bt" if args.bt else ""
-    bt_stop_grad = "_btsg" if args.bt_stop_grad and args.bt else ""
+    if args.gumbel_softmax:
+      gs_soft = "_soft" if args.gs_soft else "_hard"
+    else:
+      gs_soft = ""
 
-    args.output_dir = "outputs_{}_debug/{}_wd{}_wb{}_ws{}_an{}_pool{}_klw{}_lr{}_{}{}{}{}{}{}{}/".format(args.dataset, args.dataset,
+    lm_stop_grad = "__init__lmsg" if args.lm_stop_grad and args.lm else ""
+    bt = "_bt" if args.bt else ""
+    bt_stop_grad = "_btsg" if args.bt_stop_grad and args.bt and args.gumbel_softmax else ""
+
+    args.output_dir = "outputs_{}_CVAE_debug/{}_wd{}_wb{}_ws{}_an{}_pool{}_klw{}_lr{}_{}{}{}{}{}{}{}/".format(args.dataset, args.dataset,
         args.word_dropout, args.word_blank, args.word_shuffle, args.anneal_epoch, 
         args.max_pool_k_size, args.klw, args.lr, dn, lm, bt, decode_y, gs_soft, lm_stop_grad, bt_stop_grad)
 
@@ -439,9 +443,14 @@ def train():
   #i = 0
   dev_zero = args.dev_zero
   tr_loss, update_batch_size = None, 0
-  hparams.noise_weight = 1.
+  if hparams.anneal_epoch == 0:
+    hparams.noise_weight = 0.
+    anneal_rate = 0.
+  else:
+    hparams.noise_weight = 1.
+    anneal_rate = 1.0 / (data.train_size * args.anneal_epoch // hparams.batch_size)
+    
   hparams.gs_temp = 1.
-  anneal_rate = 1.0 / (data.train_size * args.anneal_epoch // hparams.batch_size)
   while True:
     step += 1
     x_train, x_mask, x_count, x_len, x_pos_emb_idxs, y_train, y_mask, y_count, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_count, y_sampled_len, y_pos_emb_idxs, batch_size,  eop = data.next_train()
