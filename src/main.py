@@ -163,6 +163,7 @@ parser.add_argument("--reconstruct", action="store_true", help="whether perform 
 
 parser.add_argument("--decode_on_y", action="store_true", help="whether to use cond on y at every step when decoding")
 parser.add_argument("--max_pool_k_size", type=int, default=0, help="max pooling kernel size")
+parser.add_argument("--attempt_before_decay", type=int, default=0, help="times to try before lr decay")
 args = parser.parse_args()
 
 if args.bpe_ngram: args.n = None
@@ -343,7 +344,7 @@ def train():
     optim.load_state_dict(optimizer_state)
 
     extra_file_name = os.path.join(args.output_dir, "extra.pt")
-    step, best_val_ppl, best_val_bleu, cur_attempt, lr = torch.load(extra_file_name)
+    step, best_val_ppl, best_val_bleu, cur_attempt, cur_decay_attempt, lr = torch.load(extra_file_name)
   else:
     if args.pretrained_model:
       model_name = os.path.join(args.pretrained_model, "model.pt")
@@ -397,6 +398,7 @@ def train():
     best_val_ppl = 1000
     best_val_bleu = None
     cur_attempt = 0
+    cur_decay_attempt = 0
     lr = hparams.lr
 
   model.to(hparams.device)
@@ -530,23 +532,27 @@ def train():
           save = True
           best_val_bleu = val_bleu
           cur_attempt = 0
+          cur_decay_attempt = 0
         else:
           save = False
-          cur_attempt += 1
       else:
         if best_val_ppl is None or best_val_ppl >= val_ppl:
           save = True
           best_val_ppl = val_ppl
           cur_attempt = 0
+          cur_decay_attempt = 0
         else:
           save = False
-          cur_attempt += 1
       if save or args.always_save:
-        save_checkpoint([step, best_val_ppl, best_val_bleu, cur_attempt, lr],
+        save_checkpoint([step, best_val_ppl, best_val_bleu, cur_attempt, cur_decay_attempt, lr],
                         model, optim, hparams, args.output_dir)
       elif not args.lr_schedule and step >= hparams.n_warm_ups:
-        lr = lr * args.lr_dec
-        set_lr(optim, lr)
+        if cur_decay_attempt >= args.attempt_before_decay:
+          lr = lr * args.lr_dec
+          set_lr(optim, lr)
+          cur_attempt += 1
+        else:
+          cur_decay_attempt += 1
       # reset counter after eval
       log_start_time = time.time()
       target_words = total_sents = total_noise_corrects = total_transfer_corrects = total_loss = 0
