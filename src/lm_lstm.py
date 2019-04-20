@@ -263,7 +263,7 @@ def train(args):
     x_train, x_mask, x_count, x_len, x_pos_emb_idxs, \
     y_train, y_mask, y_count, y_len, y_pos_emb_idxs, \
     y_sampled, y_sampled_mask, y_sampled_count, y_sampled_len, \
-    y_pos_emb_idxs, batch_size,  eop, _ = data.next_train()
+    y_pos_emb_idxs, batch_size,  eop = data.next_train()
 
 
     report_words += (x_count - batch_size)
