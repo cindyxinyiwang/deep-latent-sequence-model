@@ -15,7 +15,10 @@ class DataUtil(object):
 
     self.trg_i2w, self.trg_w2i = self._build_vocab(self.hparams.trg_vocab)
     self.hparams.trg_vocab_size = len(self.trg_i2w)
-    self.hparams.trg_pad_id = self.trg_w2i["<pad>"]
+    #self.hparams.trg_pad_id = self.trg_w2i["<pad>"]
+    self.hparams.trg_pad_id = self.hparams.pad_id
+    print("src_vocab_size={}".format(self.hparams.src_vocab_size))
+    print("trg_vocab_size={}".format(self.hparams.trg_vocab_size))
 
     if not self.hparams.decode:
       self.train_x = []
@@ -277,9 +280,9 @@ class DataUtil(object):
         if max_vocab_size and i >= max_vocab_size:
           break
 
-    if "<pad>" not in w2i:
-        w2i["<pad>"] = i
-        i2w.append("<pad>")
+    #if "<pad>" not in w2i:
+    #    w2i["<pad>"] = i
+    #    i2w.append("<pad>")
     #assert i2w[self.hparams.pad_id] == '<pad>'
     #assert i2w[self.hparams.unk_id] == '<unk>'
     #assert i2w[self.hparams.bos_id] == '<s>'

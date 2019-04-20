@@ -131,7 +131,7 @@ def eval(model, data, crit, step, hparams):
   valid_bleu = None
   file_count = 0
   while True:
-    x, x_mask, x_count, x_len, x_pos_emb_idxs, y, y_mask, y_count, y_len, y_pos_emb_idxs, y_neg, batch_size, end_of_epoch = data.next_dev(dev_batch_size=hparams.batch_size)
+    x, x_mask, x_count, x_len, x_pos_emb_idxs, y, y_mask, y_count, y_len, y_pos_emb_idxs, y_neg, batch_size, end_of_epoch, _ = data.next_dev(dev_batch_size=hparams.batch_size)
     # clear GPU memory
     gc.collect()
 
