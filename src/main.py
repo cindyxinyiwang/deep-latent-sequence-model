@@ -151,7 +151,7 @@ parser.add_argument("--word_dropout", type=float, default=0.2, help="drop words 
 parser.add_argument("--word_shuffle", type=float, default=1.5, help="shuffle sentence strength")
 
 # balance training objective
-parser.add_argument("--anneal_epoch", type=int, default=1, 
+parser.add_argument("--anneal_epoch", type=int, default=1,
     help="decrease the weight of autoencoding loss from 1.0 to 0.0 in the first anneal_iter epoch")
 
 # sampling parameters
@@ -162,9 +162,8 @@ parser.add_argument("--lm", action="store_true", help="whether including the LM 
 parser.add_argument("--reconstruct", action="store_true", help="whether perform reconstruction or transfer when validating bleu")
 
 parser.add_argument("--decode_on_y", action="store_true", help="whether to use cond on y at every step when decoding")
-parser.add_argument("--eval_cls", action="store_true", help="whether to use classifier to eval")
-
 parser.add_argument("--max_pool_k_size", type=int, default=0, help="max pooling kernel size")
+parser.add_argument("--attempt_before_decay", type=int, default=0, help="times to try before lr decay")
 args = parser.parse_args()
 
 if args.bpe_ngram: args.n = None
@@ -172,8 +171,10 @@ if args.bpe_ngram: args.n = None
 if args.output_dir == "":
     dn = "gs{}".format(args.temperature) if args.gumbel_softmax else "t{}".format(args.temperature)
     lm = "_lm" if args.lm else ""
-    args.output_dir = "outputs_{}/{}_wd{}_wb{}_ws{}_an{}_{}{}/".format(args.dataset, args.dataset,
-        args.word_dropout, args.word_blank, args.word_shuffle, args.anneal_epoch, dn, lm)
+    decode_y = "_seqy" if args.decode_on_y else ""
+    args.output_dir = "outputs_{}/{}_wd{}_wb{}_ws{}_an{}_pool{}_{}{}{}/".format(args.dataset, args.dataset,
+        args.word_dropout, args.word_blank, args.word_shuffle, args.anneal_epoch,
+        args.max_pool_k_size, dn, lm, decode_y)
 
 args.device = torch.device("cuda" if args.cuda else "cpu")
 
@@ -220,7 +221,7 @@ def eval(model, classifier, data, crit, step, hparams, eval_bleu=False,
 
     trans_logits, noise_logits, KL_loss = model.forward(
       x_valid, x_mask, x_len, x_pos_emb_idxs,
-      y_valid, y_mask, y_len, y_pos_emb_idxs, 
+      y_valid, y_mask, y_len, y_pos_emb_idxs,
       y_neg,  y_mask, y_len)
 
     labels = x_valid[:,1:].contiguous().view(-1)
@@ -343,7 +344,7 @@ def train():
     optim.load_state_dict(optimizer_state)
 
     extra_file_name = os.path.join(args.output_dir, "extra.pt")
-    step, best_val_ppl, best_val_bleu, cur_attempt, lr = torch.load(extra_file_name)
+    step, best_val_ppl, best_val_bleu, cur_attempt, cur_decay_attempt, lr = torch.load(extra_file_name)
   else:
     if args.pretrained_model:
       model_name = os.path.join(args.pretrained_model, "model.pt")
@@ -363,13 +364,13 @@ def train():
       reload_hparams.dropout = hparams.dropout
       reload_hparams.lr_dec = hparams.lr_dec
       hparams = reload_hparams
-      #hparams.src_vocab_list = reload_hparams.src_vocab_list 
-      #hparams.src_vocab_size = reload_hparams.src_vocab_size 
-      #hparams.trg_vocab_list = reload_hparams.trg_vocab_list 
-      #hparams.trg_vocab_size = reload_hparams.trg_vocab_size 
-      #hparams.src_char_vocab_from = reload_hparams.src_char_vocab_from 
-      #hparams.src_char_vocab_size = reload_hparams.src_char_vocab_size 
-      #hparams.trg_char_vocab_from = reload_hparams.trg_char_vocab_from 
+      #hparams.src_vocab_list = reload_hparams.src_vocab_list
+      #hparams.src_vocab_size = reload_hparams.src_vocab_size
+      #hparams.trg_vocab_list = reload_hparams.trg_vocab_list
+      #hparams.trg_vocab_size = reload_hparams.trg_vocab_size
+      #hparams.src_char_vocab_from = reload_hparams.src_char_vocab_from
+      #hparams.src_char_vocab_size = reload_hparams.src_char_vocab_size
+      #hparams.trg_char_vocab_from = reload_hparams.trg_char_vocab_from
       #hparams.trg_char_vocab_size = reload_hparams.trg_char_vocab_size
       #print(reload_hparams.src_char_vocab_from)
       #print(reload_hparams.src_char_vocab_size)
@@ -397,6 +398,7 @@ def train():
     best_val_ppl = 1000
     best_val_bleu = None
     cur_attempt = 0
+    cur_decay_attempt = 0
     lr = hparams.lr
 
   model.to(hparams.device)
@@ -439,7 +441,7 @@ def train():
     # not predicting the start symbol
     labels = x_train[:, 1:].contiguous().view(-1)
 
-    cur_tr_loss, trans_loss, noise_loss, cur_tr_acc, cur_tr_transfer_acc = get_performance(crit, trans_logits, 
+    cur_tr_loss, trans_loss, noise_loss, cur_tr_acc, cur_tr_transfer_acc = get_performance(crit, trans_logits,
         noise_logits, labels, hparams)
     if hparams.lm:
         cur_tr_loss = cur_tr_loss + KL_loss.sum()
@@ -518,35 +520,39 @@ def train():
     elif (step / args.update_batch) % args.eval_every == 0:
       eval_now = True
     else:
-      eval_now = False 
+      eval_now = False
     if eval_now:
       # based_on_bleu = args.eval_bleu and best_val_ppl is not None and best_val_ppl <= args.ppl_thresh
       based_on_bleu = False
       if args.dev_zero: based_on_bleu = True
       with torch.no_grad():
-        val_ppl, val_bleu = eval(model, classifier, data, crit, step, hparams, eval_bleu=args.eval_bleu, valid_batch_size=args.valid_batch_size)	
+        val_ppl, val_bleu = eval(model, classifier, data, crit, step, hparams, eval_bleu=args.eval_bleu, valid_batch_size=args.valid_batch_size)
       if based_on_bleu:
         if best_val_bleu is None or best_val_bleu <= val_bleu:
-          save = True 
+          save = True
           best_val_bleu = val_bleu
           cur_attempt = 0
+          cur_decay_attempt = 0
         else:
           save = False
-          cur_attempt += 1
       else:
         if best_val_ppl is None or best_val_ppl >= val_ppl:
           save = True
           best_val_ppl = val_ppl
-          cur_attempt = 0 
+          cur_attempt = 0
+          cur_decay_attempt = 0
         else:
           save = False
-          cur_attempt += 1
       if save or args.always_save:
-        save_checkpoint([step, best_val_ppl, best_val_bleu, cur_attempt, lr], 
+        save_checkpoint([step, best_val_ppl, best_val_bleu, cur_attempt, cur_decay_attempt, lr],
                         model, optim, hparams, args.output_dir)
       elif not args.lr_schedule and step >= hparams.n_warm_ups:
-        lr = lr * args.lr_dec
-        set_lr(optim, lr)
+        if cur_decay_attempt >= args.attempt_before_decay:
+          lr = lr * args.lr_dec
+          set_lr(optim, lr)
+          cur_attempt += 1
+        else:
+          cur_decay_attempt += 1
       # reset counter after eval
       log_start_time = time.time()
       target_words = total_sents = total_noise_corrects = total_transfer_corrects = total_loss = 0

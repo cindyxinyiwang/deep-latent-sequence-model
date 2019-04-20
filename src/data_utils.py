@@ -9,13 +9,16 @@ class DataUtil(object):
 
   def __init__(self, hparams, decode=True):
     self.hparams = hparams
-    
+
     self.src_i2w, self.src_w2i = self._build_vocab(self.hparams.src_vocab, max_vocab_size=self.hparams.src_vocab_size)
     self.hparams.src_vocab_size = len(self.src_i2w)
 
     self.trg_i2w, self.trg_w2i = self._build_vocab(self.hparams.trg_vocab)
     self.hparams.trg_vocab_size = len(self.trg_i2w)
-    self.hparams.trg_pad_id = self.trg_w2i["<pad>"]
+    #self.hparams.trg_pad_id = self.trg_w2i["<pad>"]
+    self.hparams.trg_pad_id = self.hparams.pad_id
+    print("src_vocab_size={}".format(self.hparams.src_vocab_size))
+    print("trg_vocab_size={}".format(self.hparams.trg_vocab_size))
 
     if not self.hparams.decode:
       self.train_x = []
@@ -47,7 +50,7 @@ class DataUtil(object):
       self.test_x, self.test_y, src_len = self._build_parallel(test_src_file, test_trg_file, is_train=False)
       self.test_size = len(self.test_x)
       self.test_index = 0
-  
+
   def load_pretrained(self, pretrained_emb_file):
     f = open(pretrained_emb_file, 'r', encoding='utf-8')
     header = f.readline().split(' ')
@@ -68,7 +71,7 @@ class DataUtil(object):
       #if not word in w2i:
       #  print("{} no in vocab".format(word))
       #  continue
-      #matrix[w2i[word]] = np.fromstring(vec, sep=' ', dtype=np.float32) 
+      #matrix[w2i[word]] = np.fromstring(vec, sep=' ', dtype=np.float32)
     return torch.FloatTensor(matrix), i2w, w2i
 
   def reset_train(self):
@@ -88,19 +91,25 @@ class DataUtil(object):
     self.train_index += 1
     batch_size = len(x_train)
     y_count = sum([len(y) for y in y_train])
-    # pad 
+    # pad
     x_train, x_mask, x_count, x_len, x_pos_emb_idxs = self._pad(x_train, self.hparams.pad_id)
     y_train, y_mask, y_count, y_len, y_pos_emb_idxs = self._pad(y_train, self.hparams.trg_pad_id)
     # sample some y
-    y_sampled = [self.sample_y() for _ in range(batch_size)]
-    y_sampled, y_sampled_mask, y_sampled_count, y_sampled_len, y_sampled_pos_emb_idxs = self._pad(y_sampled, self.hparams.trg_pad_id)
+    # y_sampled = [self.sample_y() for _ in range(batch_size)]
+    # y_sampled, y_sampled_mask, y_sampled_count, y_sampled_len, y_sampled_pos_emb_idxs = self._pad(y_sampled, self.hparams.trg_pad_id)
+
+    y_sampled = 1. - y_train
+    y_sampled_mask = y_mask
+    y_sampled_count = y_count
+    y_sampled_len = y_len
+    y_sampled_pos_emb_idxs = y_pos_emb_idxs
 
     if self.train_index >= self.n_train_batches:
       self.reset_train()
       eop = True
     else:
       eop = False
-    return x_train, x_mask, x_count, x_len, x_pos_emb_idxs, y_train, y_mask, y_count, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_count, y_sampled_len, y_sampled_pos_emb_idxs, batch_size, eop 
+    return x_train, x_mask, x_count, x_len, x_pos_emb_idxs, y_train, y_mask, y_count, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_count, y_sampled_len, y_sampled_pos_emb_idxs, batch_size, eop
 
   def sample_y(self):
     # first how many attrs?
@@ -140,7 +149,7 @@ class DataUtil(object):
     self.test_x, self.test_y, src_len = self._build_parallel(test_src_file, test_trg_file, is_train=False)
     self.test_size = len(self.test_x)
     self.test_index = 0
- 
+
   def next_test(self, test_batch_size=10):
     start_index = self.test_index
     end_index = min(start_index + test_batch_size, self.test_size)
@@ -164,7 +173,7 @@ class DataUtil(object):
       self.test_index += batch_size
 
     return x_test, x_mask, x_count, x_len, x_pos_emb_idxs, y_test, y_mask, y_count, y_len, y_pos_emb_idxs, y_neg, batch_size, eop, index
-  
+
   def sort_by_xlen(self, x, y, x_char_kv=None, y_char_kv=None, file_index=None, descend=True):
     x = np.array(x)
     y = np.array(y)
@@ -211,15 +220,15 @@ class DataUtil(object):
     for src_line, trg_line in zip(src_lines, trg_lines):
       src_tokens = src_line.split()
       trg_tokens = trg_line.split()
-      if is_train and not src_tokens or not trg_tokens: 
+      if is_train and not src_tokens or not trg_tokens:
         skip_line_count += 1
         continue
       if is_train and not self.hparams.decode and self.hparams.max_len and len(src_tokens) > self.hparams.max_len and len(trg_tokens) > self.hparams.max_len:
         skip_line_count += 1
         continue
-      
+
       src_lens.append(len(src_tokens))
-      src_indices, trg_indices = [self.hparams.bos_id], [] 
+      src_indices, trg_indices = [self.hparams.bos_id], []
       src_w2i = self.src_w2i
       for src_tok in src_tokens:
         #print(src_tok)
@@ -271,9 +280,9 @@ class DataUtil(object):
         if max_vocab_size and i >= max_vocab_size:
           break
 
-    if "<pad>" not in w2i:
-        w2i["<pad>"] = i
-        i2w.append("<pad>")
+    #if "<pad>" not in w2i:
+    #    w2i["<pad>"] = i
+    #    i2w.append("<pad>")
     #assert i2w[self.hparams.pad_id] == '<pad>'
     #assert i2w[self.hparams.unk_id] == '<unk>'
     #assert i2w[self.hparams.bos_id] == '<s>'
@@ -284,4 +293,4 @@ class DataUtil(object):
     #assert w2i['<\s>'] == self.hparams.eos_id
     return i2w, w2i
 
-  
+
