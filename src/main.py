@@ -162,8 +162,18 @@ parser.add_argument("--lm", action="store_true", help="whether including the LM 
 parser.add_argument("--reconstruct", action="store_true", help="whether perform reconstruction or transfer when validating bleu")
 
 parser.add_argument("--decode_on_y", action="store_true", help="whether to use cond on y at every step when decoding")
-parser.add_argument("--max_pool_k_size", type=int, default=0, help="max pooling kernel size")
 parser.add_argument("--attempt_before_decay", type=int, default=0, help="times to try before lr decay")
+
+parser.add_argument("--max_pool_k_size", type=int, default=0, help="max pooling kernel size")
+parser.add_argument("--gs_soft", action="store_true", help="whether soft gumbel softmax")
+parser.add_argument("--klw", type=float, default=1., help="KL loss weight")
+parser.add_argument("--lm_stop_grad", action="store_true")
+parser.add_argument("--bt", action="store_true", help="whether use back translation loss")
+parser.add_argument("--bt_stop_grad", action="store_true", 
+    help="whether stop gradients through back translation, ignored when gumbel_softmax is false")
+parser.add_argument("--avg_len", action="store_true", 
+    help="whether average over sentence length when computing loss")
+
 args = parser.parse_args()
 
 if args.bpe_ngram: args.n = None
@@ -172,9 +182,20 @@ if args.output_dir == "":
     dn = "gs{}".format(args.temperature) if args.gumbel_softmax else "t{}".format(args.temperature)
     lm = "_lm" if args.lm else ""
     decode_y = "_seqy" if args.decode_on_y else ""
-    args.output_dir = "outputs_{}/{}_wd{}_wb{}_ws{}_an{}_pool{}_{}{}{}/".format(args.dataset, args.dataset,
-        args.word_dropout, args.word_blank, args.word_shuffle, args.anneal_epoch,
-        args.max_pool_k_size, dn, lm, decode_y)
+    if args.gumbel_softmax or args.lm:
+      gs_soft = "_soft" if args.gs_soft else "_hard"
+    else:
+      gs_soft = ""
+
+    lm_stop_grad = "__init__lmsg" if args.lm_stop_grad and args.lm else ""
+    bt = "_bt" if args.bt else ""
+    bt_stop_grad = "_btsg" if args.bt_stop_grad and args.bt and args.gumbel_softmax else ""
+    avg = "_avglen" if args.avg_len else ""
+
+    args.output_dir = "outputs_{}_CVAE_debug/{}_wd{}_wb{}_ws{}_an{}_pool{}_klw{}_lr{}_{}{}{}{}{}{}{}{}/".format(args.dataset, args.dataset,
+        args.word_dropout, args.word_blank, args.word_shuffle, args.anneal_epoch, 
+        args.max_pool_k_size, args.klw, args.lr, dn, lm, bt, decode_y, gs_soft, lm_stop_grad, 
+        bt_stop_grad, avg)
 
 args.device = torch.device("cuda" if args.cuda else "cpu")
 
@@ -226,10 +247,10 @@ def eval(model, classifier, data, crit, step, hparams, eval_bleu=False,
 
     labels = x_valid[:,1:].contiguous().view(-1)
     val_loss, trans_loss, noise_loss, val_acc, val_transfer_acc = \
-                get_performance(crit, trans_logits, noise_logits, labels, hparams)
+                get_performance(crit, trans_logits, noise_logits, labels, hparams, x_len)
 
     if hparams.lm:
-        val_loss = val_loss + KL_loss.sum()
+        val_loss = val_loss + hparams.klw * KL_loss.sum()
         total_KL_loss += KL_loss.sum().item()
 
     n_batches += 1
@@ -285,7 +306,7 @@ def eval(model, classifier, data, crit, step, hparams, eval_bleu=False,
   noise_ppl = np.exp(total_noise_loss / valid_words)
 
   log_string = "val_step={0:<6d}".format(step)
-  log_string += " total={0:<6.2f}".format(valid_loss / valid_words)
+  log_string += " total={0:<6.2f}".format(valid_loss / valid_sents)
   log_string += " KL={0:<6.2f}".format(total_KL_loss / valid_sents)
   log_string += " bt_ppl={0:<6.2f}".format(bt_ppl)
   log_string += " n_ppl={0:<6.2f}".format(noise_ppl)
@@ -401,6 +422,7 @@ def train():
     cur_decay_attempt = 0
     lr = hparams.lr
 
+  model.set_lm()
   model.to(hparams.device)
 
   if args.eval_cls:
@@ -429,8 +451,14 @@ def train():
   #i = 0
   dev_zero = args.dev_zero
   tr_loss, update_batch_size = None, 0
-  hparams.noise_weight = 1.
-  anneal_rate = 1.0 / (data.train_size * args.anneal_epoch // hparams.batch_size)
+  if hparams.anneal_epoch == 0:
+    hparams.noise_weight = 0.
+    anneal_rate = 0.
+  else:
+    hparams.noise_weight = 1.
+    anneal_rate = 1.0 / (data.train_size * args.anneal_epoch // hparams.batch_size)
+
+  hparams.gs_temp = 1.
   while True:
     step += 1
     x_train, x_mask, x_count, x_len, x_pos_emb_idxs, y_train, y_mask, y_count, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_count, y_sampled_len, y_pos_emb_idxs, batch_size,  eop = data.next_train()
@@ -441,15 +469,21 @@ def train():
     # not predicting the start symbol
     labels = x_train[:, 1:].contiguous().view(-1)
 
-    cur_tr_loss, trans_loss, noise_loss, cur_tr_acc, cur_tr_transfer_acc = get_performance(crit, trans_logits,
-        noise_logits, labels, hparams)
+    cur_tr_loss, trans_loss, noise_loss, cur_tr_acc, cur_tr_transfer_acc = get_performance(crit, trans_logits, 
+        noise_logits, labels, hparams, x_len)
+
+    assert(cur_tr_loss.item() > 0)
+
     if hparams.lm:
-        cur_tr_loss = cur_tr_loss + KL_loss.sum()
+        cur_tr_loss = cur_tr_loss + hparams.klw * KL_loss.sum()
         total_KL_loss += KL_loss.sum().item()
 
     hparams.noise_weight = max(0., hparams.noise_weight - anneal_rate)
     if hparams.noise_weight == 0:
         hparams.noise_flag = False
+
+    if eop:
+        hparams.gs_temp = max(0.001, hparams.gs_temp * 0.5)
 
     total_loss += cur_tr_loss.item()
     total_bt_loss += trans_loss.item()
@@ -498,7 +532,7 @@ def train():
       log_string = "ep={0:<3d}".format(epoch)
       log_string += " steps={0:<6.2f}".format((step / args.update_batch) / 1000)
       log_string += " lr={0:<9.7f}".format(lr)
-      log_string += " total={0:<7.2f}".format(total_loss / target_words)
+      log_string += " total={0:<7.2f}".format(total_loss / total_sents)
       log_string += " KL={0:<7.2f}".format(total_KL_loss / total_sents)
       log_string += " |g|={0:<5.2f}".format(grad_norm)
 
@@ -525,6 +559,7 @@ def train():
       # based_on_bleu = args.eval_bleu and best_val_ppl is not None and best_val_ppl <= args.ppl_thresh
       based_on_bleu = False
       if args.dev_zero: based_on_bleu = True
+      print("target words: {}".format(target_words))
       with torch.no_grad():
         val_ppl, val_bleu = eval(model, classifier, data, crit, step, hparams, eval_bleu=args.eval_bleu, valid_batch_size=args.valid_batch_size)
       if based_on_bleu:
