@@ -7,7 +7,7 @@
 export PYTHONPATH="$(pwd)"
 export CUDA_VISIBLE_DEVICES="2"
 
-declare -a arr=("0.1" "0.5" "1.0")
+declare -a arr=("0.1")
 
 for i in "${arr[@]}"
 do
@@ -34,6 +34,7 @@ do
     --valid_batch_size 128 \
     --patience 5 \
     --lr_dec 0.8 \
+    --lr 0.0005 \
     --dropout 0.3 \
     --max_len 10000 \
     --seed 0 \
@@ -49,5 +50,6 @@ do
     --klw $i \
     --lm \
     --bt_stop_grad \
+    # --avg_len \
     # --gs_soft \
 done

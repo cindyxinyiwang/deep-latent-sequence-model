@@ -271,9 +271,10 @@ class Seq2Seq(nn.Module):
       KL_loss = neg_entropy - log_prior
       # KL_loss = 0. - log_prior
 
-      x_trans_len_t = torch.tensor(x_trans_len_lm, dtype=torch.float, requires_grad=False, device=self.hparams.device)
-      x_trans_len_t = x_trans_len_t - 1
-      KL_loss = KL_loss / x_trans_len_t
+      if self.hparams.avg_len:
+          x_trans_len_t = torch.tensor(x_trans_len_lm, dtype=torch.float, requires_grad=False, device=self.hparams.device)
+          x_trans_len_t = x_trans_len_t - 1
+          KL_loss = KL_loss / x_trans_len_t
     else:
       KL_loss = None
 

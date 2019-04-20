@@ -66,8 +66,9 @@ def get_performance(crit, trans_logits, noise_logits, labels, hparams, x_len, su
     noise_loss = torch.zeros((batch_size), requires_grad=False, device=hparams.device)
     acc = 0
 
-  noise_loss = noise_loss / x_len_t
-  trans_loss = trans_loss / x_len_t
+  if hparams.avg_len:
+    noise_loss = noise_loss / x_len_t
+    trans_loss = trans_loss / x_len_t
 
   trans_loss = trans_loss.sum()
   noise_loss = noise_loss.sum()
