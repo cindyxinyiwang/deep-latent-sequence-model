@@ -15,6 +15,14 @@ where `--dataset` currently supports choices `{decipher}`.
 * Python 3, PyTorch 0.4
 * [tqdm](https://github.com/tqdm/tqdm)
 
+## LM Usage
+Train:
+```shell
+CUDA_VISIBLE_DEVICES=xx python src/lm_lstm.py --dataset [dataset name] --style [binary style indicator]
+```
+
+Eval: see `scripts/decipher/sanity_check_lm_decipher.sh`
+
 ## TODO
 
 * ~~(junxian): noise module with and without bpe encoding~~
@@ -26,11 +34,16 @@ where `--dataset` currently supports choices `{decipher}`.
 ## Pre-trained LM test PPL
 * Yelp:
 
-  | train\stest | style 0 | style 1 |
+  | train\test | style 0 | style 1 |
   | ----------- | ------- | ------- |
-  | **style 0** | 31.97   | 70.04   |
-  | **style 1** | 119.19  | 21.87   |
+  | **model style 0** | 31.97   | 70.04   |
+  | **model style 1** | 119.19  | 21.87   |
 
+* Decipherment 100%
+  | train\test | style 0 | style 1 |
+  | ----------- | ------- | ------- |
+  | **model style 0** | 30.48  | 956140.07  |
+  | **model style 1** | 672110.37  | 30.35   |
   
 
 
