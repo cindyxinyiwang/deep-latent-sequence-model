@@ -40,6 +40,7 @@ Eval: see `scripts/decipher/sanity_check_lm_decipher.sh`
   | **model style 1** | 119.19  | 21.87   |
 
 * Decipherment 100%
+
   | train\test | style 0 | style 1 |
   | ----------- | ------- | ------- |
   | **model style 0** | 30.48  | 956140.07  |
