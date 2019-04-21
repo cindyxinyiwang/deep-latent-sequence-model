@@ -47,7 +47,7 @@ if __name__ == "__main__":
     # synthetic_id = "1pEHLedf3ZSo7UrHdvR1VWPfWNTcN6oWH"
     # yahoo_id = "13azGlTuGdzWLCmgDmQPmvb_jcexVWX7i"
     # yelp_id = "1FT49oLNV8syhmGXEgiK6XTjEfMNqqEJJ"
-    decipher_id = "1Gl-x9n0IOE2_yc3SbGb0ucYw5qKwZcAR"
+    decipher_id = "1O3sMoM1_RItTCFnSnr7Ac57OeqAy3JCZ"
 
     if args.dataset == "yelp":
         file_id = [yelp_id]

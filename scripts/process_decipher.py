@@ -342,6 +342,7 @@ if __name__ == '__main__':
 
     ftrain_t = open(os.path.join(save_dir, "dev.txt"), "w")
     ftrain_a = open(os.path.join(save_dir, "dev.attr"), "w")
+    fref = open(os.path.join(save_dir, "dev_ref.txt"), "w")
 
     ftrain_a0 = open(os.path.join(save_dir, "dev_0.attr"), "w")
     ftrain_a1 = open(os.path.join(save_dir, "dev_1.attr"), "w")
@@ -355,16 +356,23 @@ if __name__ == '__main__':
     with open(dev1, "r") as fin:
         for line in fin:
             ftrain_t.write(line)
+            fref.write(line)
             ftrain_a.write("cipher\n")
             ftrain_a1.write("cipher\n")
+
+    with open(dev0, "r") as fin:
+        for line in fin:
+            fref.write(line)
 
     ftrain_t.close()
     ftrain_a.close()
     ftrain_a0.close()
     ftrain_a1.close()
+    fref.close()
 
     ftrain_t = open(os.path.join(save_dir, "test.txt"), "w")
     ftrain_a = open(os.path.join(save_dir, "test.attr"), "w")
+    fref = open(os.path.join(save_dir, "test_ref.txt"), "w")
 
     ftrain_a0 = open(os.path.join(save_dir, "test_0.attr"), "w")
     ftrain_a1 = open(os.path.join(save_dir, "test_1.attr"), "w")
@@ -378,10 +386,16 @@ if __name__ == '__main__':
     with open(test1, "r") as fin:
         for line in fin:
             ftrain_t.write(line)
+            fref.write(line)
             ftrain_a.write("cipher\n")
             ftrain_a1.write("cipher\n")
+
+    with open(test0, "r") as fin:
+        for line in fin:
+            fref.write(line)
 
     ftrain_t.close()
     ftrain_a.close()
     ftrain_a0.close()
     ftrain_a1.close()
+    fref.close()
