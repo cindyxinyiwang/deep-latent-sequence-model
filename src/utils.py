@@ -40,20 +40,35 @@ def get_criterion(hparams):
     crit = crit.cuda()
   return crit
 
-def get_performance(crit, trans_logits, noise_logits, labels, hparams, sum_loss=True):
-  trans_logits = trans_logits.view(-1, hparams.src_vocab_size)
+def get_performance(crit, trans_logits, noise_logits, labels, hparams, x_len, sum_loss=True):
+  # average over length
+  x_len_t = torch.tensor(x_len, dtype=torch.float, requires_grad=False, device=hparams.device)
+  x_len_t = x_len_t - 1
+  batch_size = len(x_len)
   mask = (labels == hparams.pad_id)
-  trans_loss = crit(trans_logits, labels)
-  _, trans_preds = torch.max(trans_logits, dim=1)
-  trans_acc = torch.eq(trans_preds, labels).int().masked_fill_(mask, 0).sum().item()
+  if hparams.bt:
+    trans_logits = trans_logits.view(-1, hparams.src_vocab_size)
+    trans_loss = crit(trans_logits, labels)
+    trans_loss = trans_loss.view(batch_size, -1).sum(-1)
+    _, trans_preds = torch.max(trans_logits, dim=1)
+    trans_acc = torch.eq(trans_preds, labels).int().masked_fill_(mask, 0).sum().item()
+  else:
+    trans_loss = torch.zeros((batch_size), requires_grad=False, device=hparams.device)
+    trans_acc = 0    
+
   if hparams.noise_flag:
     noise_logits = noise_logits.view(-1, hparams.src_vocab_size)
     noise_loss = crit(noise_logits, labels)
+    noise_loss = noise_loss.view(batch_size, -1).sum(-1)
     _, preds = torch.max(noise_logits, dim=1)
     acc = torch.eq(preds, labels).int().masked_fill_(mask, 0).sum().item()
   else:
-    noise_loss = torch.zeros((1), requires_grad=False, device=hparams.device)
+    noise_loss = torch.zeros((batch_size), requires_grad=False, device=hparams.device)
     acc = 0
+
+  if hparams.avg_len:
+    noise_loss = noise_loss / x_len_t
+    trans_loss = trans_loss / x_len_t
 
   trans_loss = trans_loss.sum()
   noise_loss = noise_loss.sum()
