@@ -192,7 +192,7 @@ if args.output_dir == "":
     bt_stop_grad = "_btsg" if args.bt_stop_grad and args.bt and args.gumbel_softmax else ""
     avg = "_avglen" if args.avg_len else ""
 
-    args.output_dir = "outputs_{}_CVAE_debug/{}_wd{}_wb{}_ws{}_an{}_pool{}_klw{}_lr{}_{}{}{}{}{}{}{}{}/".format(args.dataset, args.dataset,
+    args.output_dir = "outputs_{}_CVAE_fulldev/{}_wd{}_wb{}_ws{}_an{}_pool{}_klw{}_lr{}_{}{}{}{}{}{}{}{}/".format(args.dataset, args.dataset,
         args.word_dropout, args.word_blank, args.word_shuffle, args.anneal_epoch, 
         args.max_pool_k_size, args.klw, args.lr, dn, lm, bt, decode_y, gs_soft, lm_stop_grad, 
         bt_stop_grad, avg)
@@ -594,6 +594,7 @@ def train():
           lr = lr * args.lr_dec
           set_lr(optim, lr)
           cur_attempt += 1
+          cur_decay_attempt = 0
         else:
           cur_decay_attempt += 1
       # reset counter after eval
