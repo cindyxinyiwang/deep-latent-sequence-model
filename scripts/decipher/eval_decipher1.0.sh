@@ -1,4 +1,4 @@
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=2
 
 printf "\ntranslate cipher test\n"
 ./scripts/translate.sh $1 data/yelp_decipher/yelp_decipher1.0/decipher.test.1 data/yelp_decipher/yelp_decipher1.0/test_1.attr transfer_plain.txt

@@ -9,7 +9,7 @@ Run `prepare_data.py` to prepare data:
 ```shell
 python scripts/prepare_data.py --dataset [dataset_name]
 ```
-where `--dataset` currently supports choices `{decipher}`.
+where `--dataset` currently supports choices `{yelp,formality,decipher}`.
 
 ## Requirements
 * Python 3, PyTorch 0.4

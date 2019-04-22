@@ -44,10 +44,9 @@ if __name__ == "__main__":
 
     os.chdir("data")
 
-    # synthetic_id = "1pEHLedf3ZSo7UrHdvR1VWPfWNTcN6oWH"
-    # yahoo_id = "13azGlTuGdzWLCmgDmQPmvb_jcexVWX7i"
-    # yelp_id = "1FT49oLNV8syhmGXEgiK6XTjEfMNqqEJJ"
+    yelp_id = "1IxiyjuTc_syRaqoZg6enS5013NdVrvvg"
     decipher_id = "1O3sMoM1_RItTCFnSnr7Ac57OeqAy3JCZ"
+    formality_id = "10btlMqGpBrShRMI5KrRrU-w2gAAWLVGK"
 
     if args.dataset == "yelp":
         file_id = [yelp_id]

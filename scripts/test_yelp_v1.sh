@@ -12,6 +12,7 @@ CUDA_VISIBLE_DEVICES=$1 python src/main.py \
   --dataset yelp \
   --clean_mem_every 5 \
   --reset_output_dir \
+  --output_dir test \
   --classifier_dir="pretrained_classifer/yelp" \
   --data_path data/test/ \
   --train_src_file data/yelp/train.txt \
@@ -24,7 +25,7 @@ CUDA_VISIBLE_DEVICES=$1 python src/main.py \
   --d_word_vec=128 \
   --d_model=512 \
   --log_every=100 \
-  --eval_every=1000 \
+  --eval_every=100 \
   --ppl_thresh=10000 \
   --eval_bleu \
   --batch_size 32 \
@@ -39,12 +40,12 @@ CUDA_VISIBLE_DEVICES=$1 python src/main.py \
   --word_dropout 0. \
   --word_shuffle 0. \
   --cuda \
-  --anneal_epoch 0 \
+  --anneal_epoch 2 \
   --temperature 0.01 \
   --max_pool_k_size 5 \
   --bt \
-  --klw 0.1 \
-  --lm \
-  --gs_soft \
-  --gumbel_softmax \
-  --bt_stop_grad \
+  # --klw 0.1 \
+  # --lm \
+  # --gs_soft \
+  # --gumbel_softmax \
+  # --bt_stop_grad \

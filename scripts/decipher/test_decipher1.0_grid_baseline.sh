@@ -39,15 +39,16 @@ do
     --max_len 10000 \
     --seed 0 \
     --beam_size 1 \
-    --word_blank 0. \
-    --word_dropout 0. \
-    --word_shuffle 0 \
+    --word_blank 0.2 \
+    --word_dropout 0.1 \
+    --word_shuffle 3 \
     --cuda \
     --anneal_epoch 2 \
     --temperature 0.01 \
     --max_pool_k_size $i \
     --bt \
     --bt_stop_grad \
+    --avg_len \
     # --lm \
     # --avg_len \
     # --gs_soft \

@@ -263,6 +263,7 @@ class Seq2Seq(nn.Module):
         x_trans_len_lm = x_trans_len
         org_index_lm = org_index
 
+      total_length = sum(x_trans_len_lm)
       y_sampled_reorder = torch.index_select(y_sampled, 0, org_index_lm)
       # E_{x ~ q(z|x, y)}[log p(z|y)]
       log_prior = self.log_prior(x_trans_lm, x_trans_mask_lm, x_trans_len_lm, y_sampled_reorder)
@@ -277,6 +278,7 @@ class Seq2Seq(nn.Module):
           KL_loss = KL_loss / x_trans_len_t
     else:
       KL_loss = None
+      total_length = 0
 
     if self.hparams.bt:
       # back-translation
@@ -304,7 +306,7 @@ class Seq2Seq(nn.Module):
 
     # KL_loss = None
 
-    return trans_logits, noise_logits, KL_loss
+    return trans_logits, noise_logits, KL_loss, total_length
 
   def denoise_ae(self, x_train, x_mask, x_len, y_train, y_mask, y_len):
     # [batch_size, x_len, d_model * 2]
