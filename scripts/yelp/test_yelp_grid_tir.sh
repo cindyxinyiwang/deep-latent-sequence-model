@@ -5,10 +5,6 @@
 #SBATCH --array=1-1%1
 ##SBATCH --nodelist=compute-0-7
 
-
-export PYTHONPATH="$(pwd)"
-export CUDA_VISIBLE_DEVICES="2"
-
 declare -a pool=("5" "3" "1")
 declare -a klw=("0.08" "0.1" "0.15" "0.2")
 
@@ -20,7 +16,7 @@ taskid=${SLURM_ARRAY_TASK_ID}
 i=$(( taskid/arglen2 ))
 j=$(( taskid%arglen2 ))
 
-CUDA_VISIBLE_DEVICES=$1 python src/main.py \
+python src/main.py \
   --dataset yelp \
   --clean_mem_every 5 \
   --reset_output_dir \
