@@ -372,7 +372,7 @@ class Seq2Seq(nn.Module):
     return x_trans, x_mask, x_len, reverse_index
 
   def get_soft_translations(self, x_train, x_mask, x_len, 
-                            y_sampled, y_sampled_mask, y_sampled_len, max_len=100):
+                            y_sampled, y_sampled_mask, y_sampled_len, max_len=20):
     batch_size = x_train.size(0)
 
     # x_enc: (batch, seq_len, 2 * d_model)

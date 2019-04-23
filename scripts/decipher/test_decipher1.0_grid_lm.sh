@@ -7,8 +7,8 @@
 export PYTHONPATH="$(pwd)"
 export CUDA_VISIBLE_DEVICES="2"
 
-declare -a pool=("1" "5")
-declare -a klw=("0.03" "0.05" "0.08")
+declare -a pool=("1")
+declare -a klw=("0.1" "0.05")
 
 for i in "${pool[@]}"
 do
@@ -36,15 +36,15 @@ do
       --batch_size 32 \
       --valid_batch_size 128 \
       --patience 5 \
-      --lr_dec 0.8 \
+      --lr_dec 0.5 \
       --lr 0.001 \
       --dropout 0.3 \
       --max_len 10000 \
       --seed 0 \
       --beam_size 1 \
-      --word_blank 0. \
-      --word_dropout 0. \
-      --word_shuffle 0 \
+      --word_blank 0.2 \
+      --word_dropout 0.1 \
+      --word_shuffle 3 \
       --cuda \
       --anneal_epoch 2 \
       --temperature 0.01 \
@@ -55,5 +55,6 @@ do
       --lm \
       --avg_len \
       # --gs_soft \
+
   done
 done

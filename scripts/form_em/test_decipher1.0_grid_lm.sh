@@ -1,41 +1,36 @@
 #!/bin/bash
 #SBATCH --gres=gpu:1
 #SBATCH --mem=12g
-#SBATCH -t 0
-#SBATCH --array=1-1%1
 ##SBATCH --nodelist=compute-0-7
-
+#SBATCH -t 0
 
 export PYTHONPATH="$(pwd)"
 export CUDA_VISIBLE_DEVICES="2"
 
-# declare -a pool=("5" "3" "1")
-# declare -a klw=("0.08" "0.1" "0.15" "0.2")
-
-declare -a pool=("5")
-declare -a klw=("0.1")
+declare -a pool=("1")
+declare -a klw=("0.01")
 
 for i in "${pool[@]}"
 do
   for j in "${klw[@]}"
   do
     CUDA_VISIBLE_DEVICES=$1 python src/main.py \
-      --dataset yelp \
+      --dataset decipher1_0 \
       --clean_mem_every 5 \
       --reset_output_dir \
-      --classifier_dir="pretrained_classifer/yelp" \
+      --classifier_dir="pretrained_classifer/decipher" \
       --data_path data/test/ \
-      --train_src_file data/yelp/train.txt \
-      --train_trg_file data/yelp/train.attr \
-      --dev_src_file data/yelp/dev_li.txt \
-      --dev_trg_file data/yelp/dev_li.attr \
-      --dev_trg_ref data/yelp/dev_li.txt \
-      --src_vocab  data/yelp/text.vocab \
-      --trg_vocab  data/yelp/attr.vocab \
+      --train_src_file data/yelp_decipher/yelp_decipher1.0/train.txt \
+      --train_trg_file data/yelp_decipher/yelp_decipher1.0/train.attr \
+      --dev_src_file data/yelp_decipher/yelp_decipher1.0/dev.txt \
+      --dev_trg_file data/yelp_decipher/yelp_decipher1.0/dev.attr \
+      --dev_trg_ref data/yelp_decipher/yelp_decipher1.0/dev_ref.txt \
+      --src_vocab  data/yelp_decipher/yelp_decipher1.0/text.vocab \
+      --trg_vocab  data/yelp_decipher/yelp_decipher1.0/attr.vocab \
       --d_word_vec=128 \
       --d_model=512 \
       --log_every=100 \
-      --eval_every=1000 \
+      --eval_every=3000 \
       --ppl_thresh=10000 \
       --eval_bleu \
       --batch_size 32 \
@@ -53,13 +48,12 @@ do
       --cuda \
       --anneal_epoch 2 \
       --temperature 0.01 \
+      --klw $j \
       --max_pool_k_size $i \
       --bt \
-      --klw $j \
-      --lm \
       --bt_stop_grad \
+      --lm \
       --avg_len \
-      --gs_soft \
-      # --reload_best \
+      # --gs_soft \
   done
 done

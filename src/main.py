@@ -173,8 +173,6 @@ parser.add_argument("--bt_stop_grad", action="store_true",
     help="whether stop gradients through back translation, ignored when gumbel_softmax is false")
 parser.add_argument("--avg_len", action="store_true", 
     help="whether average over sentence length when computing loss")
-parser.add_argument("--reload_best", action="store_true", 
-    help="whether reloading best model when lr decay")
 
 args = parser.parse_args()
 
@@ -194,7 +192,7 @@ if args.output_dir == "":
     bt_stop_grad = "_btsg" if args.bt_stop_grad and args.bt and args.gumbel_softmax else ""
     avg = "_avglen" if args.avg_len else ""
 
-    args.output_dir = "outputs_{}_CVAE_new/{}_wd{}_wb{}_ws{}_an{}_pool{}_klw{}_lr{}_{}{}{}{}{}{}{}{}/".format(args.dataset, args.dataset,
+    args.output_dir = "outputs_{}_CVAE_newopt/{}_wd{}_wb{}_ws{}_an{}_pool{}_klw{}_lr{}_{}{}{}{}{}{}{}{}/".format(args.dataset, args.dataset,
         args.word_dropout, args.word_blank, args.word_shuffle, args.anneal_epoch, 
         args.max_pool_k_size, args.klw, args.lr, dn, lm, bt, decode_y, gs_soft, lm_stop_grad, 
         bt_stop_grad, avg)
@@ -335,7 +333,7 @@ def eval(model, classifier, data, crit, step, hparams, eval_bleu=False,
   print(log_string)
   model.train()
   #exit(0)
-  return valid_loss / valid_words, valid_bleu
+  return valid_loss / valid_sents, valid_bleu
 
 def train():
   print(args)
@@ -493,8 +491,8 @@ def train():
     if hparams.noise_weight == 0:
         hparams.noise_flag = False
 
-    if eop:
-        hparams.gs_temp = max(0.001, hparams.gs_temp * 0.5)
+    # if eop:
+    #     hparams.gs_temp = max(0.001, hparams.gs_temp * 0.5)
 
     total_loss += cur_tr_loss.item()
     total_bt_loss += trans_loss.item()
@@ -597,7 +595,7 @@ def train():
                         model, optim, hparams, args.output_dir)
       elif not args.lr_schedule and step >= hparams.n_warm_ups:
         if cur_decay_attempt >= args.attempt_before_decay:
-          if args.reload_best:
+          if val_ppl >= 2 * best_val_ppl:
             print("reload saved best model !!!")
             model.load_state_dict(torch.load(os.path.join(args.output_dir, "model.dict")))
             hparams = torch.load(os.path.join(args.output_dir, "hparams.pt"))
