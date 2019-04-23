@@ -193,7 +193,7 @@ if args.output_dir == "":
     bt_stop_grad = "_btsg" if args.bt_stop_grad and args.bt and args.gumbel_softmax else ""
     avg = "_avglen" if args.avg_len else ""
 
-    args.output_dir = "outputs_{}_CVAE_fulldev/{}_wd{}_wb{}_ws{}_an{}_pool{}_klw{}_lr{}_{}{}{}{}{}{}{}{}/".format(args.dataset, args.dataset,
+    args.output_dir = "outputs_{}_CVAE_newopt/{}_wd{}_wb{}_ws{}_an{}_pool{}_klw{}_lr{}_{}{}{}{}{}{}{}{}/".format(args.dataset, args.dataset,
         args.word_dropout, args.word_blank, args.word_shuffle, args.anneal_epoch, 
         args.max_pool_k_size, args.klw, args.lr, dn, lm, bt, decode_y, gs_soft, lm_stop_grad, 
         bt_stop_grad, avg)
@@ -219,7 +219,7 @@ def eval(model, classifier, data, crit, step, hparams, eval_bleu=False,
   valid_total = valid_rule_count = valid_word_count = valid_sents = valid_eos_count = 0
   total_bt_loss = total_noise_loss = total_KL_loss = 0.
   valid_word_loss, valid_rule_loss, valid_eos_loss = 0, 0, 0
-  total_length = 0
+  total_lm_length = total_trans_length = 0
   valid_bleu = None
   if eval_bleu:
     valid_hyp_file = os.path.join(args.output_dir, "dev.trans_{0}".format(step))
@@ -242,12 +242,13 @@ def eval(model, classifier, data, crit, step, hparams, eval_bleu=False,
     valid_words += x_count
     valid_sents += batch_size
 
-    trans_logits, noise_logits, KL_loss, sum_len = model.forward(
+    trans_logits, noise_logits, KL_loss, lm_len, trans_len = model.forward(
       x_valid, x_mask, x_len, x_pos_emb_idxs,
       y_valid, y_mask, y_len, y_pos_emb_idxs,
       y_neg,  y_mask, y_len)
 
-    total_length += sum_len
+    total_lm_length += lm_len
+    total_trans_length += trans_len
     labels = x_valid[:,1:].contiguous().view(-1)
     val_loss, trans_loss, noise_loss, val_acc, val_transfer_acc = \
                 get_performance(crit, trans_logits, noise_logits, labels, hparams, x_len)
@@ -315,7 +316,8 @@ def eval(model, classifier, data, crit, step, hparams, eval_bleu=False,
   log_string += " n_ppl={0:<6.2f}".format(noise_ppl)
   log_string += " n_acc={0:<5.4f}".format(valid_acc / valid_words)
   log_string += " bt_acc={0:<5.4f}".format(valid_trans_acc / valid_words)
-  log_string += " lm_len={}".format(total_length / valid_sents)
+  log_string += " lm_len={}".format(total_lm_length / valid_sents)
+  log_string += " trans_len={}".format(total_trans_length / valid_sents)
   if eval_bleu:
     out_file.close()
     ref_file = args.dev_trg_ref
@@ -332,7 +334,7 @@ def eval(model, classifier, data, crit, step, hparams, eval_bleu=False,
   print(log_string)
   model.train()
   #exit(0)
-  return valid_loss / valid_words, valid_bleu
+  return valid_loss / valid_sents, valid_bleu
 
 def train():
   print(args)
@@ -451,7 +453,7 @@ def train():
   total_bt_loss = total_noise_loss = total_KL_loss = 0.
   target_rules, target_total, target_eos = 0, 0, 0
   total_word_loss, total_rule_loss, total_eos_loss = 0, 0, 0
-  total_length = 0
+  total_lm_length = total_trans_length = 0
   model.train()
   #i = 0
   dev_zero = args.dev_zero
@@ -469,9 +471,11 @@ def train():
     x_train, x_mask, x_count, x_len, x_pos_emb_idxs, y_train, y_mask, y_count, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_count, y_sampled_len, y_pos_emb_idxs, batch_size,  eop, semantic_mask = data.next_train()
     target_words += (x_count - batch_size)
     total_sents += batch_size
-    trans_logits, noise_logits, KL_loss, sum_len = model.forward(x_train, x_mask, x_len, x_pos_emb_idxs, y_train, y_mask, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_len, semantic_mask)
+    trans_logits, noise_logits, KL_loss, lm_len, trans_len = model.forward(x_train, x_mask, x_len, x_pos_emb_idxs, y_train, y_mask, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_len, semantic_mask)
+    #trans_logits, noise_logits, KL_loss, lm_len, trans_len = model.forward(x_train, x_mask, x_len, x_pos_emb_idxs, y_train, y_mask, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_len)
 
-    total_length += sum_len
+    total_lm_length += lm_len
+    total_trans_length += trans_len
 
     # not predicting the start symbol
     labels = x_train[:, 1:].contiguous().view(-1)
@@ -489,8 +493,8 @@ def train():
     if hparams.noise_weight == 0:
         hparams.noise_flag = False
 
-    if eop:
-        hparams.gs_temp = max(0.001, hparams.gs_temp * 0.5)
+    # if eop:
+    #     hparams.gs_temp = max(0.001, hparams.gs_temp * 0.5)
 
     total_loss += cur_tr_loss.item()
     total_bt_loss += trans_loss.item()
@@ -551,9 +555,10 @@ def train():
       # noise weight
       log_string += " nw={:.4f}".format(hparams.noise_weight)
 
-      log_string += " lmlen={}".format(total_length // total_sents)
+      log_string += " lmlen={}".format(total_lm_length // total_sents)
+      log_string += " translen={}".format(total_trans_length // total_sents)
       # log_string += " wpm(k)={0:<5.2f}".format(target_words / (1000 * elapsed))
-      log_string += " time(min)={0:<5.2f}".format(since_start)
+      log_string += " t={0:<5.2f}".format(since_start)
       print(log_string)
     if args.eval_end_epoch:
       if eop:
@@ -592,6 +597,10 @@ def train():
                         model, optim, hparams, args.output_dir)
       elif not args.lr_schedule and step >= hparams.n_warm_ups:
         if cur_decay_attempt >= args.attempt_before_decay:
+          if val_ppl >= 2 * best_val_ppl:
+            print("reload saved best model !!!")
+            model.load_state_dict(torch.load(os.path.join(args.output_dir, "model.dict")))
+            hparams = torch.load(os.path.join(args.output_dir, "hparams.pt"))
           lr = lr * args.lr_dec
           set_lr(optim, lr)
           cur_attempt += 1
@@ -604,7 +613,7 @@ def train():
       total_bt_loss = total_noise_loss = total_KL_loss = 0.
       target_rules = target_total = target_eos = 0
       total_word_loss = total_rule_loss = total_eos_loss = 0
-      total_length = 0
+      total_lm_length = total_trans_length = 0
     if args.patience >= 0:
       if cur_attempt > args.patience: break
     elif args.n_train_epochs > 0:

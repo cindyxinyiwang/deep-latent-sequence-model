@@ -86,6 +86,7 @@ def save_checkpoint(extra, model, optimizer, hparams, path):
   torch.save(model, os.path.join(path, "model.pt"))
   torch.save(optimizer.state_dict(), os.path.join(path, "optimizer.pt"))
   torch.save(hparams, os.path.join(path, "hparams.pt"))
+  torch.save(model.state_dict(), os.path.join(path, "model.dict"))
 
 class Logger(object):
   def __init__(self, output_file):

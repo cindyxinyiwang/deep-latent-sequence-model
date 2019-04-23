@@ -9,8 +9,11 @@
 export PYTHONPATH="$(pwd)"
 export CUDA_VISIBLE_DEVICES="2"
 
-declare -a pool=("5" "3" "1")
-declare -a klw=("0.08" "0.1" "0.15" "0.2")
+# declare -a pool=("5" "3" "1")
+# declare -a klw=("0.08" "0.1" "0.15" "0.2")
+
+declare -a pool=("5")
+declare -a klw=("0.1")
 
 for i in "${pool[@]}"
 do
@@ -24,15 +27,15 @@ do
       --data_path data/test/ \
       --train_src_file data/yelp/train.txt \
       --train_trg_file data/yelp/train.attr \
-      --dev_src_file data/yelp/dev.txt \
-      --dev_trg_file data/yelp/dev.attr \
-      --dev_trg_ref data/yelp/dev.txt \
+      --dev_src_file data/yelp/dev_li.txt \
+      --dev_trg_file data/yelp/dev_li.attr \
+      --dev_trg_ref data/yelp/dev_li.txt \
       --src_vocab  data/yelp/text.vocab \
       --trg_vocab  data/yelp/attr.vocab \
       --d_word_vec=128 \
       --d_model=512 \
       --log_every=100 \
-      --eval_every=3000 \
+      --eval_every=1000 \
       --ppl_thresh=10000 \
       --eval_bleu \
       --batch_size 32 \
@@ -56,6 +59,7 @@ do
       --lm \
       --bt_stop_grad \
       --avg_len \
-      # --gs_soft \
+      --gs_soft \
+      # --reload_best \
   done
 done
