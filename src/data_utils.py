@@ -231,9 +231,11 @@ class DataUtil(object):
       trg_lines = f.read().split('\n')
     src_data = []
     trg_data = []
-    semantic_data = []
     if semantic_file:
+      semantic_data = []
       semantic_masks = open(semantic_file, 'r').readlines()
+    else:
+      semantic_data = None
     line_count = 0
     skip_line_count = 0
     src_unk_count = 0

@@ -37,9 +37,9 @@ class NoiseLayer(nn.Module):
             words (LongTensor): the word ids, (seq_len, batch_size)
             lengths (LongTensor): (batch_size)
         """
+        words, lengths = self.word_blank(words, lengths, semantic_mask)
         words, lengths = self.word_shuffle(words, lengths)
         words, lengths = self.word_dropout(words, lengths)
-        words, lengths = self.word_blank(words, lengths, semantic_mask)
         return words, lengths
 
     def word_blank(self, x, l, semantic_mask):
@@ -60,7 +60,7 @@ class NoiseLayer(nn.Module):
           if x.size(0) != semantic_mask.size(0):
             print(x.data)
             print(semantic_mask.data)
-          keep = np.random.rand(x.size(0) - 1, x.size(1)) + self.blank_prob/2 * semantic_mask.data.cpu().numpy()[:-1,:] >= self.blank_prob
+          keep = np.random.rand(x.size(0) - 1, x.size(1)) - 2*semantic_mask.data.cpu().numpy()[:-1,:] >= self.blank_prob
         else:
           keep = np.random.rand(x.size(0) - 1, x.size(1)) >= self.blank_prob
         keep[0] = 1  # do not blank the start sentence symbol

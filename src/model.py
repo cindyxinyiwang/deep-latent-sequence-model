@@ -311,8 +311,12 @@ class Seq2Seq(nn.Module):
 
     return trans_logits, noise_logits, KL_loss, lm_length, trans_length
 
-  def denoise_ae(self, x_train, x_mask, x_len, y_train, y_mask, y_len, semantic_mask):
+  def denoise_ae(self, x_train, x_mask, x_len, y_train, y_mask, y_len, semantic_mask=None):
     # [batch_size, x_len, d_model * 2]
+    if semantic_mask is not None:
+      if x_train.size(1) != semantic_mask.size(1):
+        print(x_train.size())
+        print(semantic_mask.size())
     x_noise, x_noise_mask, x_noise_len, index  = self.add_noise(x_train, x_mask, x_len, semantic_mask)
     x_noise_enc, x_noise_init = self.encoder(x_noise, x_noise_len)
     x_noise_enc = torch.index_select(x_noise_enc, 0, index)
