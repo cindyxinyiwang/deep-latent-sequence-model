@@ -174,7 +174,6 @@ parser.add_argument("--bt_stop_grad", action="store_true",
 parser.add_argument("--avg_len", action="store_true", 
     help="whether average over sentence length when computing loss")
 
-parser.add_argument("--semantic_file", type=str, default="", help="semantic mask file")
 args = parser.parse_args()
 
 if args.bpe_ngram: args.n = None
@@ -231,7 +230,7 @@ def eval(model, classifier, data, crit, step, hparams, eval_bleu=False,
     # next batch
     x_valid, x_mask, x_count, x_len, x_pos_emb_idxs, \
     y_valid, y_mask, y_count, y_len, y_pos_emb_idxs, \
-    y_neg, batch_size, end_of_epoch, _, semantic_mask = data.next_dev(dev_batch_size=hparams.valid_batch_size)
+    y_neg, batch_size, end_of_epoch, _ = data.next_dev(dev_batch_size=hparams.valid_batch_size)
     #print(x_valid)
     #print(x_mask)
     #print(y_valid)
@@ -276,7 +275,7 @@ def eval(model, classifier, data, crit, step, hparams, eval_bleu=False,
       x_valid, x_mask, x_count, x_len, \
       x_pos_emb_idxs, y_valid, y_mask, \
       y_count, y_len, y_pos_emb_idxs, \
-      y_neg, batch_size, end_of_epoch, index, semantic_mask = data.next_dev(dev_batch_size=dev_batch_size)
+      y_neg, batch_size, end_of_epoch, index = data.next_dev(dev_batch_size=dev_batch_size)
       if hparams.reconstruct:
           y_neg = y_valid
       hs = model.translate(
@@ -468,11 +467,10 @@ def train():
   hparams.gs_temp = 1.
   while True:
     step += 1
-    x_train, x_mask, x_count, x_len, x_pos_emb_idxs, y_train, y_mask, y_count, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_count, y_sampled_len, y_pos_emb_idxs, batch_size,  eop, semantic_mask = data.next_train()
+    x_train, x_mask, x_count, x_len, x_pos_emb_idxs, y_train, y_mask, y_count, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_count, y_sampled_len, y_pos_emb_idxs, batch_size,  eop = data.next_train()
     target_words += (x_count - batch_size)
     total_sents += batch_size
-    trans_logits, noise_logits, KL_loss, lm_len, trans_len = model.forward(x_train, x_mask, x_len, x_pos_emb_idxs, y_train, y_mask, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_len, semantic_mask)
-    #trans_logits, noise_logits, KL_loss, lm_len, trans_len = model.forward(x_train, x_mask, x_len, x_pos_emb_idxs, y_train, y_mask, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_len)
+    trans_logits, noise_logits, KL_loss, lm_len, trans_len = model.forward(x_train, x_mask, x_len, x_pos_emb_idxs, y_train, y_mask, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_len)
 
     total_lm_length += lm_len
     total_trans_length += trans_len

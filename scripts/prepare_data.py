@@ -34,7 +34,7 @@ def save_response_content(response, destination):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="data downloading")
-    parser.add_argument('--dataset', choices=["yelp", "formality", "decipher", "caption", "all"], 
+    parser.add_argument('--dataset', choices=["yelp", "formality", "decipher", "all"], 
         default="decipher", help='dataset to use')
 
     args = parser.parse_args()
@@ -47,7 +47,6 @@ if __name__ == "__main__":
     yelp_id = "1IxiyjuTc_syRaqoZg6enS5013NdVrvvg"
     decipher_id = "1O3sMoM1_RItTCFnSnr7Ac57OeqAy3JCZ"
     formality_id = "10btlMqGpBrShRMI5KrRrU-w2gAAWLVGK"
-    caption_id = "1pwvsgNMsdgXRbkMrg-HawFycNKvfihqC"
 
     if args.dataset == "yelp":
         file_id = [yelp_id]
@@ -55,10 +54,8 @@ if __name__ == "__main__":
         file_id = [formality_id]
     elif args.dataset == "decipher":
         file_id = [decipher_id]
-    elif args.dataset == "caption":
-        file_id = [caption_id]
     else:
-        file_id = [yelp_id, formality_id, decipher_id, caption_id]
+        file_id = [yelp_id, formality_id, decipher_id]
 
     destination = "datasets.tar.gz"
 

@@ -28,26 +28,26 @@ class DataUtil(object):
       self.n_train_batches = 0
 
       train_x_lens = []
-      self.train_x, self.train_y, train_x_lens, self.semantic_mask = self._build_parallel(self.hparams.train_src_file, self.hparams.train_trg_file, self.hparams.semantic_file)
+      self.train_x, self.train_y, train_x_lens = self._build_parallel(self.hparams.train_src_file, self.hparams.train_trg_file)
       self.train_size = len(self.train_x)
 
       dev_src_file = self.hparams.dev_src_file
       dev_trg_file = self.hparams.dev_trg_file
-      self.dev_x, self.dev_y, src_len, _ = self._build_parallel(dev_src_file, dev_trg_file, is_train=False)
+      self.dev_x, self.dev_y, src_len = self._build_parallel(dev_src_file, dev_trg_file, is_train=False)
       self.dev_size = len(self.dev_x)
       self.dev_index = 0
-      #if self.hparams.shuffle_train:
-      #  print("Heuristic sort based on source lengths")
-      #  indices = np.argsort(train_x_lens)
-      #  self.train_x = [self.train_x[idx] for idx in indices]
-      #  self.train_y = [self.train_y[idx] for idx in indices]
+      if self.hparams.shuffle_train:
+        print("Heuristic sort based on source lengths")
+        indices = np.argsort(train_x_lens)
+        self.train_x = [self.train_x[idx] for idx in indices]
+        self.train_y = [self.train_y[idx] for idx in indices]
       self.reset_train()
     else:
       #test_src_file = os.path.join(self.hparams.data_path, self.hparams.test_src_file)
       #test_trg_file = os.path.join(self.hparams.data_path, self.hparams.test_trg_file)
       test_src_file = self.hparams.test_src_file
       test_trg_file = self.hparams.test_trg_file
-      self.test_x, self.test_y, src_len, _ = self._build_parallel(test_src_file, test_trg_file, is_train=False)
+      self.test_x, self.test_y, src_len = self._build_parallel(test_src_file, test_trg_file, is_train=False)
       self.test_size = len(self.test_x)
       self.test_index = 0
 
@@ -86,18 +86,14 @@ class DataUtil(object):
 
     x_train = self.train_x[start_index:end_index]
     y_train = self.train_y[start_index:end_index]
+    x_train, y_train, _ = self.sort_by_xlen(x_train, y_train)
 
     self.train_index += 1
     batch_size = len(x_train)
     y_count = sum([len(y) for y in y_train])
-    if self.hparams.semantic_file:
-      semantic_mask = self.semantic_mask[start_index:end_index]
-    else:
-      semantic_mask = None
-    x_train, y_train, _, semantic_mask = self.sort_by_xlen(x_train, y_train, semantic_mask)
     # pad
-    x_train, x_mask, x_count, x_len, x_pos_emb_idxs, semantic_mask = self._pad(x_train, self.hparams.pad_id, semantic_mask)
-    y_train, y_mask, y_count, y_len, y_pos_emb_idxs, _ = self._pad(y_train, self.hparams.trg_pad_id)
+    x_train, x_mask, x_count, x_len, x_pos_emb_idxs = self._pad(x_train, self.hparams.pad_id)
+    y_train, y_mask, y_count, y_len, y_pos_emb_idxs = self._pad(y_train, self.hparams.trg_pad_id)
     # sample some y
     # y_sampled = [self.sample_y() for _ in range(batch_size)]
     # y_sampled, y_sampled_mask, y_sampled_count, y_sampled_len, y_sampled_pos_emb_idxs = self._pad(y_sampled, self.hparams.trg_pad_id)
@@ -112,11 +108,7 @@ class DataUtil(object):
       eop = True
     else:
       eop = False
-    if self.hparams.semantic_file:
-      if x_train.size(1) != semantic_mask.size(1):
-        print(x_train)
-        print(semantic_mask)
-    return x_train, x_mask, x_count, x_len, x_pos_emb_idxs, y_train, y_mask, y_count, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_count, y_sampled_len, y_sampled_pos_emb_idxs, batch_size, eop, semantic_mask
+    return x_train, x_mask, x_count, x_len, x_pos_emb_idxs, y_train, y_mask, y_count, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_count, y_sampled_len, y_sampled_pos_emb_idxs, batch_size, eop
 
   def sample_y(self):
     # first how many attrs?
@@ -134,12 +126,12 @@ class DataUtil(object):
     x_dev = self.dev_x[start_index:end_index]
     y_dev = self.dev_y[start_index:end_index]
     if sort:
-      x_dev, y_dev, index, semantic_mask = self.sort_by_xlen(x_dev, y_dev)
+      x_dev, y_dev, index = self.sort_by_xlen(x_dev, y_dev)
     else:
       index = None
 
-    x_dev, x_mask, x_count, x_len, x_pos_emb_idxs, semantic_mask = self._pad(x_dev, self.hparams.pad_id)
-    y_dev, y_mask, y_count, y_len, y_pos_emb_idxs, _ = self._pad(y_dev, self.hparams.trg_pad_id)
+    x_dev, x_mask, x_count, x_len, x_pos_emb_idxs = self._pad(x_dev, self.hparams.pad_id)
+    y_dev, y_mask, y_count, y_len, y_pos_emb_idxs = self._pad(y_dev, self.hparams.trg_pad_id)
 
     y_neg = 1 - y_dev
 
@@ -150,10 +142,10 @@ class DataUtil(object):
       eop = False
       self.dev_index += batch_size
 
-    return x_dev, x_mask, x_count, x_len, x_pos_emb_idxs, y_dev, y_mask, y_count, y_len, y_pos_emb_idxs, y_neg, batch_size, eop, index, semantic_mask
+    return x_dev, x_mask, x_count, x_len, x_pos_emb_idxs, y_dev, y_mask, y_count, y_len, y_pos_emb_idxs, y_neg, batch_size, eop, index
 
   def reset_test(self, test_src_file, test_trg_file):
-    self.test_x, self.test_y, src_len, _ = self._build_parallel(test_src_file, test_trg_file, is_train=False)
+    self.test_x, self.test_y, src_len = self._build_parallel(test_src_file, test_trg_file, is_train=False)
     self.test_size = len(self.test_x)
     self.test_index = 0
 
@@ -165,10 +157,10 @@ class DataUtil(object):
     x_test = self.test_x[start_index:end_index]
     y_test = self.test_y[start_index:end_index]
 
-    x_test, y_test, index, semantic_mask = self.sort_by_xlen(x_test, y_test)
+    x_test, y_test, index = self.sort_by_xlen(x_test, y_test)
 
-    x_test, x_mask, x_count, x_len, x_pos_emb_idxs, semantic_mask = self._pad(x_test, self.hparams.pad_id)
-    y_test, y_mask, y_count, y_len, y_pos_emb_idxs, _ = self._pad(y_test, self.hparams.trg_pad_id)
+    x_test, x_mask, x_count, x_len, x_pos_emb_idxs = self._pad(x_test, self.hparams.pad_id)
+    y_test, y_mask, y_count, y_len, y_pos_emb_idxs = self._pad(y_test, self.hparams.trg_pad_id)
 
     y_neg = 1 - y_test
 
@@ -179,23 +171,19 @@ class DataUtil(object):
       eop = False
       self.test_index += batch_size
 
-    return x_test, x_mask, x_count, x_len, x_pos_emb_idxs, y_test, y_mask, y_count, y_len, y_pos_emb_idxs, y_neg, batch_size, eop, index, semantic_mask
+    return x_test, x_mask, x_count, x_len, x_pos_emb_idxs, y_test, y_mask, y_count, y_len, y_pos_emb_idxs, y_neg, batch_size, eop, index
 
-  def sort_by_xlen(self, x, y, semantic_mask=None, descend=True):
+  def sort_by_xlen(self, x, y, x_char_kv=None, y_char_kv=None, file_index=None, descend=True):
     x = np.array(x)
     y = np.array(y)
-    if semantic_mask is not None:
-      semantic_mask = np.array(semantic_mask)
     x_len = [len(i) for i in x]
     index = np.argsort(x_len)
     if descend:
       index = index[::-1]
     x, y = x[index].tolist(), y[index].tolist()
-    if semantic_mask is not None:
-      semantic_mask = semantic_mask[index].tolist()
-    return x, y, index, semantic_mask
+    return x, y, index
 
-  def _pad(self, sentences, pad_id, semantic_mask=None, char_kv=None, char_dim=None, char_sents=None):
+  def _pad(self, sentences, pad_id, char_kv=None, char_dim=None, char_sents=None):
     batch_size = len(sentences)
     lengths = [len(s) for s in sentences]
     count = sum(lengths)
@@ -207,23 +195,13 @@ class DataUtil(object):
     mask = torch.ByteTensor(mask)
     pos_emb_indices = [[i+1 for i in range(len(s))] + ([0]*(max_len - len(s))) for s in sentences]
     pos_emb_indices = Variable(torch.FloatTensor(pos_emb_indices))
-    if semantic_mask is not None:
-      for s, m in zip(sentences, semantic_mask):
-        if len(s) != len(m):
-          print(sentences)
-          print(semantic_mask)
-          exit(0)
-      semantic_mask = [s + ([0]*(max_len - len(s))) for s in semantic_mask]
-      semantic_mask = torch.FloatTensor(semantic_mask)
     if self.hparams.cuda:
       padded_sentences = padded_sentences.cuda()
       pos_emb_indices = pos_emb_indices.cuda()
       mask = mask.cuda()
-      if semantic_mask is not None:
-        semantic_mask = semantic_mask.cuda()
-    return padded_sentences, mask, count, lengths, pos_emb_indices, semantic_mask
+    return padded_sentences, mask, count, lengths, pos_emb_indices
 
-  def _build_parallel(self, src_file_name, trg_file_name, semantic_file="", is_train=True):
+  def _build_parallel(self, src_file_name, trg_file_name, is_train=True):
     print("loading parallel sentences from {} {}".format(src_file_name, trg_file_name))
     with open(src_file_name, 'r', encoding='utf-8') as f:
       src_lines = f.read().split('\n')
@@ -231,11 +209,6 @@ class DataUtil(object):
       trg_lines = f.read().split('\n')
     src_data = []
     trg_data = []
-    if semantic_file:
-      semantic_data = []
-      semantic_masks = open(semantic_file, 'r').readlines()
-    else:
-      semantic_data = None
     line_count = 0
     skip_line_count = 0
     src_unk_count = 0
@@ -243,11 +216,9 @@ class DataUtil(object):
 
     src_lens = []
     src_unk_id = self.hparams.unk_id
-    i = -1
     for src_line, trg_line in zip(src_lines, trg_lines):
       src_tokens = src_line.split()
       trg_tokens = trg_line.split()
-      i += 1
       if is_train and not src_tokens or not trg_tokens:
         skip_line_count += 1
         continue
@@ -281,23 +252,15 @@ class DataUtil(object):
       src_indices.append(self.hparams.eos_id)
       src_data.append(src_indices)
       trg_data.append(trg_indices)
-      if semantic_file:
-        semantic_mask = [0] + [int(s) for s in semantic_masks[i].split()] + [0]
-        semantic_data.append(semantic_mask)
-        if len(src_indices) != len(semantic_mask):
-          print(line_count)
-          print(src_indices)
-          print(src_tokens)
-          print(semantic_mask)
       line_count += 1
       if line_count % 10000 == 0:
         print("processed {} lines".format(line_count))
     if is_train:
-      src_data, trg_data, _, semantic_data = self.sort_by_xlen(src_data, trg_data, semantic_data, descend=False)
+      src_data, trg_data, _ = self.sort_by_xlen(src_data, trg_data, descend=False)
     print("src_unk={}, trg_unk={}".format(src_unk_count, trg_unk_count))
     assert len(src_data) == len(trg_data)
     print("lines={}, skipped_lines={}".format(len(src_data), skip_line_count))
-    return src_data, trg_data, src_lens, semantic_data
+    return src_data, trg_data, src_lens
 
   def _build_vocab(self, vocab_file, max_vocab_size=None):
     i2w = []

@@ -230,7 +230,7 @@ class Seq2Seq(nn.Module):
       self.LM = None
 
 
-  def forward(self, x_train, x_mask, x_len, x_pos_emb_idxs, y_train, y_mask, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_len, semantic_mask=None):
+  def forward(self, x_train, x_mask, x_len, x_pos_emb_idxs, y_train, y_mask, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_len):
     y_len = torch.tensor(y_len, dtype=torch.float, device=self.hparams.device, requires_grad=False)
     y_sampled_len = torch.tensor(y_sampled_len, dtype=torch.float, device=self.hparams.device, 
         requires_grad=False)
@@ -300,7 +300,7 @@ class Seq2Seq(nn.Module):
 
     # then denoise encode
     if self.hparams.noise_flag:
-      noise_logits = self.denoise_ae(x_train, x_mask, x_len, y_train, y_mask, y_len, semantic_mask)
+      noise_logits = self.denoise_ae(x_train, x_mask, x_len, y_train, y_mask, y_len)
     else:
       noise_logits = None
 
@@ -311,13 +311,9 @@ class Seq2Seq(nn.Module):
 
     return trans_logits, noise_logits, KL_loss, lm_length, trans_length
 
-  def denoise_ae(self, x_train, x_mask, x_len, y_train, y_mask, y_len, semantic_mask=None):
+  def denoise_ae(self, x_train, x_mask, x_len, y_train, y_mask, y_len):
     # [batch_size, x_len, d_model * 2]
-    if semantic_mask is not None:
-      if x_train.size(1) != semantic_mask.size(1):
-        print(x_train.size())
-        print(semantic_mask.size())
-    x_noise, x_noise_mask, x_noise_len, index  = self.add_noise(x_train, x_mask, x_len, semantic_mask)
+    x_noise, x_noise_mask, x_noise_len, index  = self.add_noise(x_train, x_mask, x_len)
     x_noise_enc, x_noise_init = self.encoder(x_noise, x_noise_len)
     x_noise_enc = torch.index_select(x_noise_enc, 0, index)
     new_x_noise_init = []
@@ -372,7 +368,7 @@ class Seq2Seq(nn.Module):
     for i, idx in enumerate(index):
       reverse_index[idx] = i
 
-    x_trans, x_mask, x_count, x_len, _, _ = self.data._pad(translated_x, self.hparams.pad_id)
+    x_trans, x_mask, x_count, x_len, _ = self.data._pad(translated_x, self.hparams.pad_id)
     return x_trans, x_mask, x_len, reverse_index
 
   def get_soft_translations(self, x_train, x_mask, x_len, 
@@ -511,7 +507,7 @@ class Seq2Seq(nn.Module):
 
     return x_trans, x_mask, x_len, reverse_index, index_t, neg_entropy
 
-  def add_noise(self, x_train, x_mask, x_len, semantic_mask):
+  def add_noise(self, x_train, x_mask, x_len):
     """
     Args:
       x_train: (batch, seq_len, dim)
@@ -522,9 +518,7 @@ class Seq2Seq(nn.Module):
       index: a numpy array to show the original position before reordering
     """
     x_train = x_train.transpose(0, 1)
-    if semantic_mask is not None:
-      semantic_mask = semantic_mask.transpose(0, 1)
-    x_train, x_len = self.noise(x_train, x_len, semantic_mask)
+    x_train, x_len = self.noise(x_train, x_len)
     x_train = x_train.transpose(0, 1)
 
     index = np.argsort(x_len)

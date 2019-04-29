@@ -29,7 +29,7 @@ class NoiseLayer(nn.Module):
         self.blank_index = blank_index
         self.eos_index = eos_index
 
-    def forward(self, words, lengths, semantic_mask):
+    def forward(self, words, lengths):
         """perform shuffle, dropout, and blank operations,
         note that the input is required to have bos_index at the start and
         eos_index at the end
@@ -37,12 +37,12 @@ class NoiseLayer(nn.Module):
             words (LongTensor): the word ids, (seq_len, batch_size)
             lengths (LongTensor): (batch_size)
         """
-        words, lengths = self.word_blank(words, lengths, semantic_mask)
         words, lengths = self.word_shuffle(words, lengths)
         words, lengths = self.word_dropout(words, lengths)
+        words, lengths = self.word_blank(words, lengths)
         return words, lengths
 
-    def word_blank(self, x, l, semantic_mask):
+    def word_blank(self, x, l):
         """
         Randomly blank input words.
         Args:
@@ -56,13 +56,7 @@ class NoiseLayer(nn.Module):
         # define words to blank
         # bos_index = self.bos_index[lang_id]
         # assert (x[0] == bos_index).sum() == l.size(0)
-        if semantic_mask is not None:
-          if x.size(0) != semantic_mask.size(0):
-            print(x.data)
-            print(semantic_mask.data)
-          keep = np.random.rand(x.size(0) - 1, x.size(1)) - 2*semantic_mask.data.cpu().numpy()[:-1,:] >= self.blank_prob
-        else:
-          keep = np.random.rand(x.size(0) - 1, x.size(1)) >= self.blank_prob
+        keep = np.random.rand(x.size(0) - 1, x.size(1)) >= self.blank_prob
         keep[0] = 1  # do not blank the start sentence symbol
 
         # # be sure to blank entire words
