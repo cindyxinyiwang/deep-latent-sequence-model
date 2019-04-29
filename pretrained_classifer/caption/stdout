@@ -1,0 +1,167 @@
+building model...
+src_vocab_size=9394
+trg_vocab_size=2
+loading parallel sentences from data/caption/train.txt data/caption/train.attr
+processed 10000 lines
+src_unk=0, trg_unk=0
+lines=12000, skipped_lines=1
+loading parallel sentences from data/caption/dev.txt data/caption/dev.attr
+src_unk=0, trg_unk=0
+lines=1000, skipped_lines=1
+Model has 1206302 params
+--------------------------------------------------------------------------------
+start training...
+ep=0   steps=0.10   lr=0.0010000 loss=2227.16 acc=0.5191 |g|=0.82  wpm(k)=521.86 time(min)=0.01 
+ep=0   steps=0.20   lr=0.0010000 loss=2164.27 acc=0.5678 |g|=0.88  wpm(k)=533.88 time(min)=0.01 
+ep=0   steps=0.30   lr=0.0010000 loss=2069.24 acc=0.6181 |g|=3.98  wpm(k)=531.35 time(min)=0.02 
+ep=1   steps=0.40   lr=0.0010000 loss=1993.16 acc=0.6478 |g|=0.78  wpm(k)=534.16 time(min)=0.02 
+ep=1   steps=0.50   lr=0.0010000 loss=1862.92 acc=0.6900 |g|=0.86  wpm(k)=535.96 time(min)=0.03 
+ep=1   steps=0.60   lr=0.0010000 loss=1777.24 acc=0.7150 |g|=2.14  wpm(k)=533.79 time(min)=0.04 
+ep=1   steps=0.70   lr=0.0010000 loss=1768.02 acc=0.7116 |g|=1.08  wpm(k)=534.90 time(min)=0.04 
+ep=2   steps=0.80   lr=0.0010000 loss=1614.69 acc=0.7566 |g|=0.90  wpm(k)=535.81 time(min)=0.05 
+ep=2   steps=0.90   lr=0.0010000 loss=1572.90 acc=0.7625 |g|=1.88  wpm(k)=533.96 time(min)=0.05 
+ep=2   steps=1.00   lr=0.0010000 loss=1511.10 acc=0.7669 |g|=3.10  wpm(k)=534.37 time(min)=0.06 
+ep=2   steps=1.10   lr=0.0010000 loss=1525.27 acc=0.7734 |g|=3.90  wpm(k)=535.80 time(min)=0.07 
+ep=3   steps=1.20   lr=0.0010000 loss=1336.16 acc=0.8156 |g|=1.16  wpm(k)=530.83 time(min)=0.07 
+ep=3   steps=1.30   lr=0.0010000 loss=1327.98 acc=0.8056 |g|=1.49  wpm(k)=535.98 time(min)=0.08 
+ep=3   steps=1.40   lr=0.0010000 loss=1257.87 acc=0.8316 |g|=0.85  wpm(k)=532.80 time(min)=0.08 
+ep=4   steps=1.50   lr=0.0010000 loss=1270.19 acc=0.8197 |g|=1.21  wpm(k)=532.29 time(min)=0.09 
+Eval at step 1500. valid_batch_size=32
+val_step=1500  
+ loss=0.55  
+ acc=0.7150
+Saving model to 'outputs_caption_classify'
+ep=4   steps=1.60   lr=0.0010000 loss=1094.47 acc=0.8672 |g|=2.01  wpm(k)=102.64 time(min)=0.12 
+ep=4   steps=1.70   lr=0.0010000 loss=1041.19 acc=0.8638 |g|=1.90  wpm(k)=463.96 time(min)=0.13 
+ep=4   steps=1.80   lr=0.0010000 loss=1043.13 acc=0.8666 |g|=0.96  wpm(k)=535.20 time(min)=0.13 
+ep=5   steps=1.90   lr=0.0010000 loss=985.54  acc=0.8741 |g|=2.90  wpm(k)=534.71 time(min)=0.14 
+ep=5   steps=2.00   lr=0.0010000 loss=855.97  acc=0.9041 |g|=0.72  wpm(k)=535.51 time(min)=0.15 
+ep=5   steps=2.10   lr=0.0010000 loss=827.43  acc=0.9075 |g|=0.90  wpm(k)=530.45 time(min)=0.15 
+ep=5   steps=2.20   lr=0.0010000 loss=898.81  acc=0.8938 |g|=1.91  wpm(k)=525.67 time(min)=0.16 
+ep=6   steps=2.30   lr=0.0010000 loss=717.96  acc=0.9178 |g|=1.05  wpm(k)=530.92 time(min)=0.16 
+ep=6   steps=2.40   lr=0.0010000 loss=687.09  acc=0.9281 |g|=1.32  wpm(k)=534.34 time(min)=0.17 
+ep=6   steps=2.50   lr=0.0010000 loss=637.60  acc=0.9325 |g|=1.02  wpm(k)=532.17 time(min)=0.18 
+ep=6   steps=2.60   lr=0.0010000 loss=705.75  acc=0.9209 |g|=1.32  wpm(k)=535.46 time(min)=0.18 
+ep=7   steps=2.70   lr=0.0010000 loss=553.31  acc=0.9422 |g|=1.60  wpm(k)=534.85 time(min)=0.19 
+ep=7   steps=2.80   lr=0.0010000 loss=514.01  acc=0.9547 |g|=0.98  wpm(k)=531.06 time(min)=0.19 
+ep=7   steps=2.90   lr=0.0010000 loss=583.79  acc=0.9397 |g|=1.40  wpm(k)=529.66 time(min)=0.20 
+ep=8   steps=3.00   lr=0.0010000 loss=498.11  acc=0.9463 |g|=1.82  wpm(k)=528.43 time(min)=0.21 
+Eval at step 3000. valid_batch_size=32
+val_step=3000  
+ loss=0.69  
+ acc=0.7240
+Saving model to 'outputs_caption_classify'
+ep=8   steps=3.10   lr=0.0010000 loss=355.84  acc=0.9709 |g|=0.95  wpm(k)=241.43 time(min)=0.22 
+ep=8   steps=3.20   lr=0.0010000 loss=417.73  acc=0.9575 |g|=1.53  wpm(k)=531.54 time(min)=0.23 
+ep=8   steps=3.30   lr=0.0010000 loss=402.81  acc=0.9625 |g|=1.02  wpm(k)=533.06 time(min)=0.23 
+ep=9   steps=3.40   lr=0.0010000 loss=408.39  acc=0.9634 |g|=1.63  wpm(k)=533.15 time(min)=0.24 
+ep=9   steps=3.50   lr=0.0010000 loss=307.62  acc=0.9769 |g|=0.84  wpm(k)=526.99 time(min)=0.24 
+ep=9   steps=3.60   lr=0.0010000 loss=286.25  acc=0.9769 |g|=0.68  wpm(k)=534.97 time(min)=0.25 
+ep=9   steps=3.70   lr=0.0010000 loss=312.54  acc=0.9712 |g|=1.14  wpm(k)=514.53 time(min)=0.26 
+ep=10  steps=3.80   lr=0.0010000 loss=244.22  acc=0.9809 |g|=0.89  wpm(k)=529.23 time(min)=0.26 
+ep=10  steps=3.90   lr=0.0010000 loss=227.28  acc=0.9825 |g|=0.98  wpm(k)=531.41 time(min)=0.27 
+ep=10  steps=4.00   lr=0.0010000 loss=228.64  acc=0.9828 |g|=0.35  wpm(k)=536.06 time(min)=0.27 
+ep=10  steps=4.10   lr=0.0010000 loss=229.46  acc=0.9816 |g|=0.64  wpm(k)=537.41 time(min)=0.28 
+ep=11  steps=4.20   lr=0.0010000 loss=179.49  acc=0.9888 |g|=0.65  wpm(k)=533.79 time(min)=0.29 
+ep=11  steps=4.30   lr=0.0010000 loss=156.95  acc=0.9894 |g|=0.44  wpm(k)=532.33 time(min)=0.29 
+ep=11  steps=4.40   lr=0.0010000 loss=165.75  acc=0.9888 |g|=0.45  wpm(k)=535.55 time(min)=0.30 
+ep=12  steps=4.50   lr=0.0010000 loss=191.67  acc=0.9853 |g|=1.03  wpm(k)=534.21 time(min)=0.30 
+Eval at step 4500. valid_batch_size=32
+val_step=4500  
+ loss=0.90  
+ acc=0.7090
+ep=12  steps=4.60   lr=0.0008000 loss=111.74  acc=0.9944 |g|=0.24  wpm(k)=273.66 time(min)=0.32 
+ep=12  steps=4.70   lr=0.0008000 loss=109.96  acc=0.9934 |g|=0.34  wpm(k)=535.12 time(min)=0.32 
+ep=12  steps=4.80   lr=0.0008000 loss=116.50  acc=0.9928 |g|=0.34  wpm(k)=535.34 time(min)=0.33 
+ep=13  steps=4.90   lr=0.0008000 loss=122.00  acc=0.9938 |g|=0.27  wpm(k)=536.20 time(min)=0.33 
+ep=13  steps=5.00   lr=0.0008000 loss=85.93   acc=0.9950 |g|=0.11  wpm(k)=533.58 time(min)=0.34 
+ep=13  steps=5.10   lr=0.0008000 loss=88.58   acc=0.9962 |g|=0.26  wpm(k)=528.33 time(min)=0.35 
+ep=13  steps=5.20   lr=0.0008000 loss=90.07   acc=0.9956 |g|=0.47  wpm(k)=532.32 time(min)=0.35 
+ep=14  steps=5.30   lr=0.0008000 loss=83.77   acc=0.9959 |g|=1.36  wpm(k)=532.57 time(min)=0.36 
+ep=14  steps=5.40   lr=0.0008000 loss=62.19   acc=0.9978 |g|=0.49  wpm(k)=536.61 time(min)=0.36 
+ep=14  steps=5.50   lr=0.0008000 loss=66.40   acc=0.9969 |g|=1.04  wpm(k)=536.36 time(min)=0.37 
+ep=14  steps=5.60   lr=0.0008000 loss=83.36   acc=0.9947 |g|=0.18  wpm(k)=536.42 time(min)=0.38 
+ep=15  steps=5.70   lr=0.0008000 loss=63.33   acc=0.9975 |g|=0.32  wpm(k)=537.17 time(min)=0.38 
+ep=15  steps=5.80   lr=0.0008000 loss=60.55   acc=0.9972 |g|=0.18  wpm(k)=534.32 time(min)=0.39 
+ep=15  steps=5.90   lr=0.0008000 loss=52.86   acc=0.9984 |g|=0.43  wpm(k)=536.43 time(min)=0.39 
+ep=16  steps=6.00   lr=0.0008000 loss=57.15   acc=0.9988 |g|=0.39  wpm(k)=528.84 time(min)=0.40 
+Eval at step 6000. valid_batch_size=32
+val_step=6000  
+ loss=1.07  
+ acc=0.7110
+ep=16  steps=6.10   lr=0.0006400 loss=45.41   acc=0.9978 |g|=0.39  wpm(k)=270.27 time(min)=0.41 
+ep=16  steps=6.20   lr=0.0006400 loss=40.23   acc=0.9984 |g|=0.21  wpm(k)=534.20 time(min)=0.42 
+ep=16  steps=6.30   lr=0.0006400 loss=43.25   acc=0.9981 |g|=1.10  wpm(k)=533.45 time(min)=0.42 
+ep=17  steps=6.40   lr=0.0006400 loss=42.99   acc=0.9984 |g|=0.08  wpm(k)=523.04 time(min)=0.43 
+ep=17  steps=6.50   lr=0.0006400 loss=28.70   acc=0.9997 |g|=0.08  wpm(k)=534.14 time(min)=0.44 
+ep=17  steps=6.60   lr=0.0006400 loss=33.99   acc=0.9984 |g|=0.61  wpm(k)=536.61 time(min)=0.44 
+ep=17  steps=6.70   lr=0.0006400 loss=37.64   acc=0.9984 |g|=0.15  wpm(k)=536.42 time(min)=0.45 
+ep=18  steps=6.80   lr=0.0006400 loss=39.99   acc=0.9981 |g|=0.18  wpm(k)=532.43 time(min)=0.45 
+ep=18  steps=6.90   lr=0.0006400 loss=24.10   acc=0.9994 |g|=0.10  wpm(k)=534.88 time(min)=0.46 
+ep=18  steps=7.00   lr=0.0006400 loss=36.40   acc=0.9984 |g|=0.07  wpm(k)=535.73 time(min)=0.47 
+ep=18  steps=7.10   lr=0.0006400 loss=39.17   acc=0.9981 |g|=0.12  wpm(k)=532.24 time(min)=0.47 
+ep=19  steps=7.20   lr=0.0006400 loss=26.66   acc=0.9991 |g|=0.09  wpm(k)=526.25 time(min)=0.48 
+ep=19  steps=7.30   lr=0.0006400 loss=20.99   acc=0.9994 |g|=0.07  wpm(k)=534.03 time(min)=0.48 
+ep=19  steps=7.40   lr=0.0006400 loss=34.74   acc=0.9984 |g|=0.09  wpm(k)=534.59 time(min)=0.49 
+ep=20  steps=7.50   lr=0.0006400 loss=33.44   acc=0.9984 |g|=0.13  wpm(k)=535.00 time(min)=0.50 
+Eval at step 7500. valid_batch_size=32
+val_step=7500  
+ loss=1.23  
+ acc=0.7110
+ep=20  steps=7.60   lr=0.0005120 loss=22.23   acc=0.9994 |g|=0.17  wpm(k)=269.47 time(min)=0.51 
+ep=20  steps=7.70   lr=0.0005120 loss=20.07   acc=0.9994 |g|=0.31  wpm(k)=536.07 time(min)=0.51 
+ep=20  steps=7.80   lr=0.0005120 loss=22.98   acc=0.9991 |g|=0.07  wpm(k)=534.65 time(min)=0.52 
+ep=21  steps=7.90   lr=0.0005120 loss=31.54   acc=0.9984 |g|=0.07  wpm(k)=530.65 time(min)=0.53 
+ep=21  steps=8.00   lr=0.0005120 loss=22.45   acc=0.9991 |g|=0.10  wpm(k)=535.18 time(min)=0.53 
+ep=21  steps=8.10   lr=0.0005120 loss=13.47   acc=0.9997 |g|=0.09  wpm(k)=533.78 time(min)=0.54 
+ep=21  steps=8.20   lr=0.0005120 loss=28.01   acc=0.9981 |g|=0.06  wpm(k)=535.44 time(min)=0.54 
+ep=22  steps=8.30   lr=0.0005120 loss=28.36   acc=0.9988 |g|=0.10  wpm(k)=535.85 time(min)=0.55 
+ep=22  steps=8.40   lr=0.0005120 loss=12.43   acc=0.9997 |g|=0.03  wpm(k)=532.65 time(min)=0.56 
+ep=22  steps=8.50   lr=0.0005120 loss=18.20   acc=0.9994 |g|=0.05  wpm(k)=536.15 time(min)=0.56 
+ep=22  steps=8.60   lr=0.0005120 loss=36.51   acc=0.9981 |g|=0.09  wpm(k)=530.92 time(min)=0.57 
+ep=23  steps=8.70   lr=0.0005120 loss=18.15   acc=0.9991 |g|=0.18  wpm(k)=535.00 time(min)=0.57 
+ep=23  steps=8.80   lr=0.0005120 loss=24.02   acc=0.9991 |g|=0.17  wpm(k)=527.69 time(min)=0.58 
+ep=23  steps=8.90   lr=0.0005120 loss=12.69   acc=0.9997 |g|=0.06  wpm(k)=531.68 time(min)=0.59 
+ep=24  steps=9.00   lr=0.0005120 loss=20.93   acc=0.9988 |g|=0.04  wpm(k)=536.05 time(min)=0.59 
+Eval at step 9000. valid_batch_size=32
+val_step=9000  
+ loss=1.32  
+ acc=0.7110
+ep=24  steps=9.10   lr=0.0004096 loss=26.66   acc=0.9981 |g|=0.04  wpm(k)=272.42 time(min)=0.60 
+ep=24  steps=9.20   lr=0.0004096 loss=14.41   acc=0.9994 |g|=0.02  wpm(k)=524.63 time(min)=0.61 
+ep=24  steps=9.30   lr=0.0004096 loss=20.11   acc=0.9991 |g|=0.05  wpm(k)=531.74 time(min)=0.62 
+ep=25  steps=9.40   lr=0.0004096 loss=9.61    acc=0.9997 |g|=0.03  wpm(k)=532.38 time(min)=0.62 
+ep=25  steps=9.50   lr=0.0004096 loss=15.95   acc=0.9991 |g|=0.03  wpm(k)=535.47 time(min)=0.63 
+ep=25  steps=9.60   lr=0.0004096 loss=10.98   acc=0.9994 |g|=0.16  wpm(k)=535.58 time(min)=0.63 
+ep=25  steps=9.70   lr=0.0004096 loss=29.66   acc=0.9981 |g|=0.04  wpm(k)=534.62 time(min)=0.64 
+ep=26  steps=9.80   lr=0.0004096 loss=16.91   acc=0.9991 |g|=0.04  wpm(k)=533.76 time(min)=0.65 
+ep=26  steps=9.90   lr=0.0004096 loss=12.71   acc=0.9994 |g|=0.03  wpm(k)=530.41 time(min)=0.65 
+ep=26  steps=10.00  lr=0.0004096 loss=11.09   acc=0.9997 |g|=0.05  wpm(k)=527.27 time(min)=0.66 
+ep=26  steps=10.10  lr=0.0004096 loss=20.40   acc=0.9984 |g|=1.68  wpm(k)=535.29 time(min)=0.66 
+ep=27  steps=10.20  lr=0.0004096 loss=30.66   acc=0.9978 |g|=0.08  wpm(k)=534.53 time(min)=0.67 
+ep=27  steps=10.30  lr=0.0004096 loss=12.31   acc=0.9994 |g|=0.11  wpm(k)=535.11 time(min)=0.68 
+ep=27  steps=10.40  lr=0.0004096 loss=12.32   acc=0.9994 |g|=0.03  wpm(k)=534.82 time(min)=0.68 
+ep=28  steps=10.50  lr=0.0004096 loss=15.87   acc=0.9991 |g|=0.03  wpm(k)=533.89 time(min)=0.69 
+Eval at step 10500. valid_batch_size=32
+val_step=10500 
+ loss=1.36  
+ acc=0.7180
+ep=28  steps=10.60  lr=0.0003277 loss=8.94    acc=0.9997 |g|=0.02  wpm(k)=271.15 time(min)=0.70 
+ep=28  steps=10.70  lr=0.0003277 loss=11.72   acc=0.9994 |g|=0.02  wpm(k)=534.48 time(min)=0.71 
+ep=28  steps=10.80  lr=0.0003277 loss=22.58   acc=0.9984 |g|=0.12  wpm(k)=536.07 time(min)=0.71 
+ep=29  steps=10.90  lr=0.0003277 loss=9.87    acc=0.9994 |g|=0.05  wpm(k)=535.05 time(min)=0.72 
+ep=29  steps=11.00  lr=0.0003277 loss=11.06   acc=0.9994 |g|=0.04  wpm(k)=535.18 time(min)=0.72 
+ep=29  steps=11.10  lr=0.0003277 loss=6.40    acc=0.9997 |g|=0.06  wpm(k)=530.86 time(min)=0.73 
+ep=29  steps=11.20  lr=0.0003277 loss=16.13   acc=0.9988 |g|=1.54  wpm(k)=534.24 time(min)=0.74 
+ep=30  steps=11.30  lr=0.0003277 loss=12.05   acc=0.9994 |g|=0.05  wpm(k)=534.26 time(min)=0.74 
+ep=30  steps=11.40  lr=0.0003277 loss=10.20   acc=0.9994 |g|=0.04  wpm(k)=536.01 time(min)=0.75 
+ep=30  steps=11.50  lr=0.0003277 loss=27.85   acc=0.9975 |g|=0.01  wpm(k)=535.02 time(min)=0.75 
+ep=30  steps=11.60  lr=0.0003277 loss=10.94   acc=0.9994 |g|=0.07  wpm(k)=529.97 time(min)=0.76 
+ep=31  steps=11.70  lr=0.0003277 loss=14.20   acc=0.9988 |g|=0.01  wpm(k)=532.12 time(min)=0.77 
+ep=31  steps=11.80  lr=0.0003277 loss=13.89   acc=0.9991 |g|=0.03  wpm(k)=533.52 time(min)=0.77 
+ep=31  steps=11.90  lr=0.0003277 loss=9.62    acc=0.9994 |g|=0.01  wpm(k)=528.61 time(min)=0.78 
+ep=32  steps=12.00  lr=0.0003277 loss=18.01   acc=0.9988 |g|=0.02  wpm(k)=534.22 time(min)=0.78 
+Eval at step 12000. valid_batch_size=32
+val_step=12000 
+ loss=1.42  
+ acc=0.7170
