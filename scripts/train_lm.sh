@@ -7,5 +7,5 @@
 export PYTHONPATH="$(pwd)"
 
 CUDA_VISIBLE_DEVICES=$1 python src/lm_lstm.py \
-    --dataset yelp \
-    --style 0
+    --dataset form_em \
+    --style 1

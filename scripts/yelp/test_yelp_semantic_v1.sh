@@ -13,7 +13,6 @@ python src/main.py \
   --dataset yelp \
   --clean_mem_every 5 \
   --reset_output_dir \
-  --output_dir outputs_yelp_semantic_v1/ \
   --classifier_dir="pretrained_classifer/yelp" \
   --data_path data/test/ \
   --train_src_file data/yelp/train.txt \
@@ -41,7 +40,7 @@ python src/main.py \
   --word_dropout 0.1 \
   --word_shuffle 3 \
   --cuda \
-  --anneal_epoch 2 \
+  --anneal_epoch 1 \
   --temperature 0.01 \
   --max_pool_k_size 5 \
   --bt \
