@@ -51,3 +51,5 @@ Eval: see `scripts/decipher/sanity_check_lm_decipher.sh`
 ## References
 * [What is wrong with style transfer for texts?](https://arxiv.org/abs/1808.04365)
 * [Dear Sir or Madam, May I introduce the GYAFC Dataset: Corpus, Benchmarks and Metrics for Formality Style Transfer](https://arxiv.org/abs/1803.06535)
+* [Evaluating Style Transfer for Text](https://arxiv.org/pdf/1904.02295)
+* [Unsupervised Text Style Transfer via Iterative Matching and Translation](https://arxiv.org/pdf/1901.11333)
