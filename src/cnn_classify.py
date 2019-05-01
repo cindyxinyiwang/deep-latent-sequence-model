@@ -10,11 +10,52 @@ import re
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 from data_utils import DataUtil
 from hparams import *
 from utils import *
 from model import *
+
+class BiLSTMClassify(nn.Module):
+    """docstring for BiLSTMClassify"""
+    def __init__(self, hparams):
+        super(BiLSTMClassify, self).__init__()
+        self.hparams = hparams
+        self.word_emb = nn.Embedding(self.hparams.src_vocab_size,
+                                     self.hparams.d_word_vec,
+                                     padding_idx=hparams.pad_id)
+        
+        self.lstm = nn.LSTM(self.hparams.d_word_vec, 
+                            self.hparams.d_model,
+                            batch_first=True,
+                            bidirectional=True,
+                            num_layers=2,
+                            dropout=self.hparams.dropout)
+
+        self.bridge = nn.Linear(hparams.d_model * 2, hparams.trg_vocab_size, bias=False)
+
+        self.dropout = nn.Dropout(self.hparams.dropout)
+
+
+    def forward(self, x_train, x_mask, x_len, step=None):
+        batch_size, max_len = x_train.size()
+        word_emb = self.word_emb(x_train)
+
+        word_emb = self.dropout(word_emb)
+
+        packed_word_emb = pack_padded_sequence(word_emb, x_len, batch_first=True)
+        enc_output, (ht, ct) = self.lstm(packed_word_emb)
+        enc_output, _ = pad_packed_sequence(enc_output, batch_first=True, 
+                                            padding_value=self.hparams.pad_id)
+
+        # average pooling
+        x_mask_neg = (1. - x_mask.float()).unsqueeze(-1)
+        sent_embed = (enc_output * x_mask_neg).sum(1) / (x_mask_neg.sum(1))
+        
+        logits = self.bridge(sent_embed)
+
+        return logits
 
 
 class CNNClassify(nn.Module):
@@ -205,7 +246,10 @@ def train():
     step, best_loss, best_acc, cur_attempt, lr = torch.load(extra_file_name)
   else:
     data = DataUtil(hparams=hparams)
-    model = CNNClassify(hparams)
+    if hparams.classifer == "cnn":
+        model = CNNClassify(hparams)
+    else:
+        model = BiLSTMClassify(hparams)
     if args.cuda:
       model = model.cuda()
     #if args.init_type == "uniform":
@@ -436,6 +480,7 @@ if __name__ == "__main__":
   
   parser.add_argument("--reconstruct", action="store_true", help="whether perform reconstruction or transfer when validating bleu")
   parser.add_argument("--negate", action="store_true", help="whether negate the labels when evaluating")
+  parser.add_argument("--classifer", type=str, choices=["cnn", "lstm"])
   args = parser.parse_args()
 
   if not args.decode:

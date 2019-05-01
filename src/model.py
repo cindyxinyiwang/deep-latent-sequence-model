@@ -90,7 +90,7 @@ class Encoder(nn.Module):
     # enc_output = enc_output.permute(1, 0, 2)
     
     # max pooling
-    if self.hparams.max_pool_k_size > 0:
+    if self.hparams.max_pool_k_size > 1:
       enc_output = F.max_pool1d(enc_output.permute(0, 2, 1), kernel_size=self.hparams.max_pool_k_size, padding=(self.hparams.max_pool_k_size // 2)).permute(0, 2, 1)
     dec_init_cell = self.bridge(torch.cat([ct[0], ct[1]], 1))
     dec_init_state = F.tanh(dec_init_cell)

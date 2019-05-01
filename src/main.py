@@ -462,7 +462,10 @@ def train():
     anneal_rate = 0.
   else:
     hparams.noise_weight = 1.
-    anneal_rate = 1.0 / (data.train_size * args.anneal_epoch // hparams.batch_size)
+    if hparams.anneal_epoch == -1:
+        anneal_rate = 0.
+    else:
+        anneal_rate = 1.0 / (data.train_size * args.anneal_epoch // hparams.batch_size)
 
   hparams.gs_temp = 1.
   while True:
