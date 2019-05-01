@@ -1,4 +1,4 @@
-export CUDA_VISIBLE_DEVICES=0
+# export CUDA_VISIBLE_DEVICES=0
 
 printf "\ntranslate reference test\n"
 ./scripts/yelp_eval/translate_yelp.sh $1 data/yelp/test_li.txt data/yelp/test_li.attr transfer_ref.txt

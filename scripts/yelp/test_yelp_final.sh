@@ -2,24 +2,8 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=12g
 #SBATCH -t 0
-#SBATCH --array=1,2,3,4,5,7,8,9,10,11%3
+#SBATCH --array=0-0%1
 ##SBATCH --nodelist=compute-0-7
-
-declare -a pool=("5" "3" "1")
-declare -a klw=("0.08" "0.1" "0.15" "0.2")
-declare -a anneal=("1" "2")
-declare -a nblank=("0.2" "0.3")
-declare -a ndrop=("0.1" "0.2" "0.3")
-
-arglen1=${#nblank[@]}
-arglen2=${#ndrop[@]}
-arglen3=${#anneal[@]}
-
-taskid=${SLURM_ARRAY_TASK_ID}
-
-i=$(( taskid/arglen2/arglen3 ))
-j=$(( taskid/arglen2%arglen1 ))
-k=$(( taskid%arglen2 ))
 
 python src/main.py \
   --dataset yelp \
@@ -49,16 +33,16 @@ python src/main.py \
   --max_len 10000 \
   --seed 0 \
   --beam_size 1 \
-  --word_blank ${nblank[$j]} \
-  --word_dropout ${ndrop[$k]} \
-  --word_shuffle 3 \
+  --word_blank 0. \
+  --word_dropout 0. \
+  --word_shuffle 0. \
   --cuda \
-  --anneal_epoch ${anneal[$i]} \
+  --anneal_epoch 3 \
   --temperature 0.01 \
   --max_pool_k_size 5 \
   --bt \
   --bt_stop_grad \
-  # --klw 0.1 \
-  # --lm \
-  # --avg_len \
+  --klw 0.1 \
+  --lm \
+  --avg_len \
   # --gs_soft \
