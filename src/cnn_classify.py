@@ -131,7 +131,7 @@ def eval(model, data, crit, step, hparams):
   valid_bleu = None
   file_count = 0
   while True:
-    x, x_mask, x_count, x_len, x_pos_emb_idxs, y, y_mask, y_count, y_len, y_pos_emb_idxs, y_neg, batch_size, end_of_epoch, _, _ = data.next_dev(dev_batch_size=hparams.batch_size)
+    x, x_mask, x_count, x_len, x_pos_emb_idxs, y, y_mask, y_count, y_len, y_pos_emb_idxs, y_neg, batch_size, end_of_epoch, _ = data.next_dev(dev_batch_size=hparams.batch_size)
     # clear GPU memory
     gc.collect()
 
@@ -234,7 +234,7 @@ def train():
   model.train()
   epoch = 0
   while True:
-    x_train, x_mask, x_count, x_len, x_pos_emb_idxs, y_train, y_mask, y_count, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_count, y_sampled_len, y_pos_emb_idxs, batch_size,  eop, semantic_mask = data.next_train()
+    x_train, x_mask, x_count, x_len, x_pos_emb_idxs, y_train, y_mask, y_count, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_count, y_sampled_len, y_pos_emb_idxs, batch_size,  eop = data.next_train()
     step += 1
     #print(x_train)
     #print(x_mask)
