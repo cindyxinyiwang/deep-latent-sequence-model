@@ -13,5 +13,5 @@ do
   python src/run-spm.py \
     --model=data/form_em/spm"$vocab_size".model \
     < $f \
-    > ${f/txt/txt.spm$vocab_size} 
+    > ${f/txt/spm$vocab_size.txt} 
 done
