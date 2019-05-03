@@ -1,6 +1,10 @@
+"""download pretrained lm models from google drive
+"""
+
 import argparse
 import requests
 import tarfile
+import subprocess
 import os
 
 def download_file_from_google_drive(id, destination):
@@ -42,12 +46,12 @@ if __name__ == "__main__":
     if not os.path.exists("data"):
         os.makedirs("data")
 
-    os.chdir("data")
+    os.chdir("pretrained_lm")
 
-    yelp_id = "1IxiyjuTc_syRaqoZg6enS5013NdVrvvg"
-    decipher_id = "1O3sMoM1_RItTCFnSnr7Ac57OeqAy3JCZ"
-    formality_id = "10btlMqGpBrShRMI5KrRrU-w2gAAWLVGK"
-    caption_id = "1pwvsgNMsdgXRbkMrg-HawFycNKvfihqC"
+    yelp_id = ""
+    decipher_id = ""
+    formality_id = ""
+    caption_id = ""
     sr_bos_id = "1NsSEKOufdvcf0JueHqO_vaBrYgdLgzj8"
 
     if args.dataset == "yelp":
@@ -71,5 +75,6 @@ if __name__ == "__main__":
         tar.extractall()
         tar.close()
         os.remove(destination)
+        # subprocess.run(["mv", "{}_style0"])
 
     os.chdir("../")

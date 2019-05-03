@@ -45,7 +45,10 @@ class LSTM_LM(nn.Module):
                  batch_first=True)
 
     # prediction layer
-    self.pred_linear = nn.Linear(self.nh, hparams.src_vocab_size, bias=False)
+    self.pred_linear = nn.Linear(self.nh, hparams.src_vocab_size, bias=True)
+
+    if hparams.tie_weight:
+        self.pred_linear.weight = self.embed.weight
 
     self.loss = nn.CrossEntropyLoss(ignore_index=hparams.pad_id, reduction="none")
 
@@ -55,6 +58,8 @@ class LSTM_LM(nn.Module):
     for param in self.parameters():
       model_init(param)
     emb_init(self.embed.weight)
+
+    self.pred_linear.bias.data.zero_()
 
 
   def decode(self, x, x_len, gumbel_softmax=False):
@@ -175,7 +180,8 @@ def init_args():
   parser.add_argument('--style', type=int, help='binary, 0 or 1')
   parser.add_argument("--decode", action="store_true", help="whether to decode only")
   parser.add_argument("--max_len", type=int, default=10000, help="maximum len considered on the target side")
-
+  parser.add_argument("--tie_weight", action="store_true", help="whether use embedding weight in the pre-softmax")
+  parser.add_argument("--output", type=str, default="")
 
   parser.add_argument('--test_src_file', type=str, default="")
   parser.add_argument('--test_trg_file', type=str, default="")
@@ -187,12 +193,14 @@ def init_args():
 
   if args.eval_from == "":
     args.output_dir = "pretrained_lm/{}_style{}/".format(args.dataset, args.style)
-    if not os.path.exists(args.output_dir):
-      os.makedirs(args.output_dir)
   else:
     args.output_dir = "pretrained_lm/{}_eval_style{}/".format(args.dataset, args.style)
-    if not os.path.exists(args.output_dir):
-      os.makedirs(args.output_dir)
+
+  if args.output != "":
+    args.output_dir = args.output
+
+  if not os.path.exists(args.output_dir):
+    os.makedirs(args.output_dir)
 
   args.device = torch.device("cuda" if args.cuda else "cpu")
 
@@ -275,6 +283,11 @@ def train(args):
     return 
 
   model.to(hparams.device)
+
+  trainable_params = [
+    p for p in model.parameters() if p.requires_grad]
+  num_params = count_params(trainable_params)
+  print("Model has {0} params".format(num_params))
 
   optim = torch.optim.SGD(model.parameters(), lr=1.0)
 
