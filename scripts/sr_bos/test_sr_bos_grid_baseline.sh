@@ -48,8 +48,8 @@ do
     --max_pool_k_size 1 \
     --merge_bpe \
     --bt \
-    --bt_stop_grad \
     --gumbel_softmax \
+    # --bt_stop_grad \
     # --lm \
     # --avg_len \
     # --gs_soft \

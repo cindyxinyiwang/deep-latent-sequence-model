@@ -6,13 +6,13 @@
 
 export CUDA_VISIBLE_DEVICES=0
 
-data_dir="data/yelp_decipher/yelp_decipher1.0"
-dataset="decipher1_0"
+data_dir="data/sr_bos"
+dataset="sr_bos"
 model0_dir=$(printf "pretrained_lm/%s_style0/model.pt" $dataset)
 model1_dir=$(printf "pretrained_lm/%s_style1/model.pt" $dataset)
 
-test_src_file0=$data_dir/decipher.test.0
-test_src_file1=$data_dir/decipher.test.1
+test_src_file0=$data_dir/test_0.spm32000.txt
+test_src_file1=$data_dir/test_1.spm32000.txt
 test_trg_file0=$data_dir/test_0.attr
 test_trg_file1=$data_dir/test_1.attr
 

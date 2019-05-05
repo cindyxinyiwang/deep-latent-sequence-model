@@ -52,7 +52,7 @@ if __name__ == "__main__":
     decipher_id = ""
     formality_id = ""
     caption_id = ""
-    sr_bos_id = "1NsSEKOufdvcf0JueHqO_vaBrYgdLgzj8"
+    sr_bos_id = "163KmzacA2QV7gFmp-o5pwHw7KSyhFX16"
 
     if args.dataset == "yelp":
         file_id = [yelp_id]
