@@ -187,14 +187,17 @@ if args.output_dir == "":
     else:
       gs_soft = ""
 
+    
+    gs_str = "_gs" if args.gumbel_softmax else ""
+
     lm_stop_grad = "__init__lmsg" if args.lm_stop_grad and args.lm else ""
     bt = "_bt" if args.bt else ""
     bt_stop_grad = "_btsg" if args.bt_stop_grad and args.bt and args.gumbel_softmax else ""
     avg = "_avglen" if args.avg_len else ""
 
-    args.output_dir = "outputs_{}_CVAE_newopt/{}_wd{}_wb{}_ws{}_an{}_pool{}_klw{}_lr{}_{}{}{}{}{}{}{}{}/".format(args.dataset, args.dataset,
+    args.output_dir = "outputs_{}_CVAE_newopt/{}_wd{}_wb{}_ws{}_an{}_pool{}_klw{}_lr{}_{}{}{}{}{}{}{}{}{}/".format(args.dataset, args.dataset,
         args.word_dropout, args.word_blank, args.word_shuffle, args.anneal_epoch, 
-        args.max_pool_k_size, args.klw, args.lr, dn, lm, bt, decode_y, gs_soft, lm_stop_grad, 
+        args.max_pool_k_size, args.klw, args.lr, dn, lm, bt, decode_y, gs_str, gs_soft, lm_stop_grad, 
         bt_stop_grad, avg)
 
 args.device = torch.device("cuda" if args.cuda else "cpu")

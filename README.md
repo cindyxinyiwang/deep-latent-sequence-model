@@ -45,6 +45,13 @@ Eval: see `scripts/decipher/sanity_check_lm_decipher.sh`
   | ----------- | ------- | ------- |
   | **model style 0** | 30.48  | 956140.07  |
   | **model style 1** | 672110.37  | 30.35   |
+
+* sr_bos bpe vocab32000
+
+  | train\test | style 0 | style 1 |
+  | ----------- | ------- | ------- |
+  | **model style 0** | 94.46  | 10438.70  |
+  | **model style 1** | 131.20  | 159658.92   |
   
 
 
