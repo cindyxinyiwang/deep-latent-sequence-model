@@ -2,7 +2,7 @@
 
 ### change the vocab size as you wish 
 vocab_size=32000
-dataset="sr_bos"
+dataset="form_em"
  
 python src/train-spm.py \
   --input=data/$dataset/train.txt \
