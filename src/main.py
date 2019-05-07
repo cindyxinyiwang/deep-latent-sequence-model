@@ -16,7 +16,7 @@ from data_utils import DataUtil
 from hparams import *
 from model import *
 from utils import *
-from cnn_classify import test, CNNClassify
+from cnn_classify import test, CNNClassify, BiLSTMClassify
 
 if __name__ == "__main__":
     from sys import path

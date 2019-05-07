@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
     yelp_id = "1IxiyjuTc_syRaqoZg6enS5013NdVrvvg"
     decipher_id = "1O3sMoM1_RItTCFnSnr7Ac57OeqAy3JCZ"
-    formality_id = "105ZoivvUQX52FNb0ZjYQ2xX3s4566RyU"
+    formality_id = "1WhB2am_qScYtA7LJ0mxtdnzDiZFY4mrj"
     caption_id = "1pwvsgNMsdgXRbkMrg-HawFycNKvfihqC"
     sr_bos_id = "1NsSEKOufdvcf0JueHqO_vaBrYgdLgzj8"
 

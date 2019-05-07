@@ -50,7 +50,7 @@ if __name__ == "__main__":
 
     yelp_id = ""
     decipher_id = ""
-    formality_id = ""
+    formality_id = "1-TEyN-pAT9qY2u9JGtWfKXvEpak2UJmR"
     caption_id = ""
     sr_bos_id = "163KmzacA2QV7gFmp-o5pwHw7KSyhFX16"
 
