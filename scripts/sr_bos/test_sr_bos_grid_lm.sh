@@ -7,9 +7,9 @@
 export PYTHONPATH="$(pwd)"
 export CUDA_VISIBLE_DEVICES="2"
 
-declare -a anneal=("5")
+declare -a klw=("0.05" "0.1")
 
-for i in "${anneal[@]}"
+for i in "${klw[@]}"
 do
   CUDA_VISIBLE_DEVICES=$1 python src/main.py \
     --dataset sr_bos \
@@ -27,7 +27,7 @@ do
     --d_word_vec=128 \
     --d_model=512 \
     --log_every=100 \
-    --eval_every=100 \
+    --eval_every=3000 \
     --ppl_thresh=10000 \
     --eval_bleu \
     --batch_size 32 \
@@ -43,10 +43,10 @@ do
     --word_dropout 0.1 \
     --word_shuffle 3 \
     --cuda \
-    --anneal_epoch 2 \
+    --anneal_epoch 5 \
     --temperature 0.01 \
     --max_pool_k_size 1 \
-    --klw 0.1 \
+    --klw $i \
     --merge_bpe \
     --bt \
     --bt_stop_grad \

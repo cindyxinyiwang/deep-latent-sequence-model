@@ -45,8 +45,21 @@ Eval: see `scripts/decipher/sanity_check_lm_decipher.sh`
   | ----------- | ------- | ------- |
   | **model style 0** | 30.48  | 956140.07  |
   | **model style 1** | 672110.37  | 30.35   |
-  
 
+* sr_bos bpe vocab32000
+
+  | train\test | style 0 | style 1 |
+  | ----------- | ------- | ------- |
+  | **model style 0** | 94.46  | 10438.70  |
+  | **model style 1** |  159658.92 |  131.20  |
+
+* form_em
+
+  | train\test | style 0 | style 1 |
+  | ----------- | ------- | ------- |
+  | **model style 0** | 71.30  | 356.31  |
+  | **model style 1** |  170.26 | 135.50|
+  
 
 ## References
 * [What is wrong with style transfer for texts?](https://arxiv.org/abs/1808.04365)
