@@ -6,8 +6,8 @@
 
 export CUDA_VISIBLE_DEVICES=0
 
-data_dir="data/form_em"
-dataset="form_em"
+data_dir="data/shakespeare"
+dataset="shakespeare"
 model0_dir=$(printf "pretrained_lm/%s_style0/model.pt" $dataset)
 model1_dir=$(printf "pretrained_lm/%s_style1/model.pt" $dataset)
 
