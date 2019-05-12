@@ -38,8 +38,8 @@ def save_response_content(response, destination):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="data downloading")
-    parser.add_argument('--dataset', choices=["yelp", "formality", "decipher", 
-        "caption", "sr_bos", "shakespeare", "all"], 
+    parser.add_argument('--dataset', choices=["yelp", "formality", "decipher",
+        "caption", "sr_bos", "shakespeare", "all"],
         default="decipher", help='dataset to use')
 
     args = parser.parse_args()
@@ -74,7 +74,7 @@ if __name__ == "__main__":
     destination = "datasets.tar.gz"
 
     for file_id_e in file_id:
-        download_file_from_google_drive(file_id_e, destination)  
+        download_file_from_google_drive(file_id_e, destination)
         tar = tarfile.open(destination, "r:gz")
         tar.extractall()
         tar.close()

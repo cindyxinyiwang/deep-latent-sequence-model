@@ -5,8 +5,8 @@
 ##SBATCH --nodelist=compute-0-7
 #SBATCH -t 0
 
-declare -a klw=("0.01" "0.03" "0.05" "0.1")
-declare -a anneal=("-1" "1" "3")
+declare -a klw=("0.001" "0.01" "0.03" "0.05" "0.1" "0.5")
+declare -a anneal=("-1" "3")
 
 arglen1=${#klw[@]}
 arglen2=${#anneal[@]}
@@ -44,9 +44,9 @@ python src/main.py \
   --max_len 10000 \
   --seed 0 \
   --beam_size 1 \
-  --word_blank 0.2 \
-  --word_dropout 0.1 \
-  --word_shuffle 3 \
+  --word_blank 0. \
+  --word_dropout 0. \
+  --word_shuffle 0 \
   --cuda \
   --anneal_epoch ${anneal[$j]} \
   --temperature 0.01 \
@@ -54,7 +54,8 @@ python src/main.py \
   --max_pool_k_size 1 \
   --merge_bpe \
   --bt \
-  --bt_stop_grad \
   --lm \
   --avg_len \
+  --bt_stop_grad \
+  # --gumbel_softmax \
   # --gs_soft \
