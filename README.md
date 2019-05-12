@@ -59,6 +59,13 @@ Eval: see `scripts/decipher/sanity_check_lm_decipher.sh`
   | ----------- | ------- | ------- |
   | **model style 0** | 71.30  | 356.31  |
   | **model style 1** |  170.26 | 135.50|
+
+* shakespeare
+
+  | train\test | style 0 | style 1 |
+  | ----------- | ------- | ------- |
+  | **model style 0** | 132.95  | 175.21  |
+  | **model style 1** |  363.10 | 85.25|
   
 
 ## References
