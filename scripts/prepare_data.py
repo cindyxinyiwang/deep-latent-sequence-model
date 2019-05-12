@@ -34,7 +34,8 @@ def save_response_content(response, destination):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="data downloading")
-    parser.add_argument('--dataset', choices=["yelp", "formality", "decipher", "caption", "sr_bos", "all"], 
+    parser.add_argument('--dataset', choices=["yelp", "formality", 
+        "decipher", "caption", "sr_bos", "shakespeare", "all"], 
         default="decipher", help='dataset to use')
 
     args = parser.parse_args()
@@ -49,6 +50,7 @@ if __name__ == "__main__":
     formality_id = "1WhB2am_qScYtA7LJ0mxtdnzDiZFY4mrj"
     caption_id = "1pwvsgNMsdgXRbkMrg-HawFycNKvfihqC"
     sr_bos_id = "1NsSEKOufdvcf0JueHqO_vaBrYgdLgzj8"
+    shakespeare_id = "11IeX-I9vcpBca9-idUunX5AKXRD_3Erl"
 
     if args.dataset == "yelp":
         file_id = [yelp_id]
@@ -60,8 +62,10 @@ if __name__ == "__main__":
         file_id = [caption_id]
     elif args.dataset == "sr_bos":
         file_id = [sr_bos_id]
+    elif args.dataset == "shakespeare":
+        file_id = [shakespeare_id]
     else:
-        file_id = [yelp_id, formality_id, decipher_id, caption_id, sr_bos_id]
+        file_id = [yelp_id, formality_id, decipher_id, caption_id, sr_bos_id, shakespeare_id]
 
     destination = "datasets.tar.gz"
 
