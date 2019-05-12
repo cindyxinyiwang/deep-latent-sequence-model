@@ -12,18 +12,18 @@ declare -a anneal=("5")
 for i in "${anneal[@]}"
 do
   CUDA_VISIBLE_DEVICES=$1 python src/main.py \
-    --dataset form_em \
+    --dataset shakespeare \
     --clean_mem_every 5 \
     --reset_output_dir \
-    --classifier_dir="pretrained_classifer/form_em" \
+    --classifier_dir="pretrained_classifer/shakespeare" \
     --data_path data/test/ \
-    --train_src_file data/form_em/train.txt \
-    --train_trg_file data/form_em/train.attr \
-    --dev_src_file data/form_em/dev.txt \
-    --dev_trg_file data/form_em/dev.attr \
-    --dev_trg_ref data/form_em/dev.txt \
-    --src_vocab  data/form_em/text.vocab \
-    --trg_vocab  data/form_em/attr.vocab \
+    --train_src_file data/shakespeare/train.txt \
+    --train_trg_file data/shakespeare/train.attr \
+    --dev_src_file data/shakespeare/dev.txt \
+    --dev_trg_file data/shakespeare/dev.attr \
+    --dev_trg_ref data/shakespeare/dev_ref.txt \
+    --src_vocab  data/shakespeare/text.vocab \
+    --trg_vocab  data/shakespeare/attr.vocab \
     --d_word_vec=128 \
     --d_model=512 \
     --log_every=100 \
@@ -43,7 +43,7 @@ do
     --word_dropout 0.1 \
     --word_shuffle 3 \
     --cuda \
-    --anneal_epoch 1 \
+    --anneal_epoch -1 \
     --temperature 0.01 \
     --max_pool_k_size 5 \
     --bt \

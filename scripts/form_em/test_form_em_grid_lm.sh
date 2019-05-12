@@ -30,7 +30,7 @@ do
     --eval_every=1500 \
     --ppl_thresh=10000 \
     --eval_bleu \
-    --batch_size 32 \
+    --batch_size 16 \
     --valid_batch_size 128 \
     --patience 5 \
     --lr_dec 0.5 \
@@ -48,8 +48,8 @@ do
     --max_pool_k_size 5 \
     --bt \
     --bt_stop_grad \
+    --lm \
+    --avg_len \
     # --gumbel_softmax \
-    # --lm \
-    # --avg_len \
     # --gs_soft \
 done
