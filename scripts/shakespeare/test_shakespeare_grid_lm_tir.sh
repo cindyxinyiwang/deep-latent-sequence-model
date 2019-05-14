@@ -1,7 +1,8 @@
 #!/bin/bash
 #SBATCH --gres=gpu:1
 #SBATCH --mem=12g
-#SBATCH --array=0-11%4
+#SBATCH --array=0-15%3
+#SBATCH --exclude=compute-0-15
 ##SBATCH --nodelist=compute-0-7
 #SBATCH -t 0
 
@@ -17,7 +18,7 @@ i=$(( taskid/arglen2 ))
 j=$(( taskid%arglen2 ))
 
 python src/main.py \
-  --dataset sr_bos \
+  --dataset shakespeare \
   --clean_mem_every 5 \
   --reset_output_dir \
   --classifier_dir="pretrained_classifer/shakespeare" \

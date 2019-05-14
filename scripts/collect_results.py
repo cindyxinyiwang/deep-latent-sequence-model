@@ -18,6 +18,7 @@ with open("{}.results".format(args.outdir.strip("/")), "w") as fout:
     for root, subdirs, files in os.walk(args.outdir):
         for file in files:
             if file == "stdout":
+                best_results = []
                 print("processing {}".format(os.path.join(root, file)))
                 fin = open(os.path.join(root, file))
                 line = fin.readline()

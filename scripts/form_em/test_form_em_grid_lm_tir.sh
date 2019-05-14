@@ -17,7 +17,7 @@ i=$(( taskid/arglen2 ))
 j=$(( taskid%arglen2 ))
 
 python src/main.py \
-  --dataset sr_bos \
+  --dataset form_em \
   --clean_mem_every 5 \
   --reset_output_dir \
   --classifier_dir="pretrained_classifer/form_em" \
@@ -35,7 +35,7 @@ python src/main.py \
   --eval_every=1500 \
   --ppl_thresh=10000 \
   --eval_bleu \
-  --batch_size 32 \
+  --batch_size 16 \
   --valid_batch_size 128 \
   --patience 5 \
   --lr_dec 0.5 \
@@ -44,14 +44,14 @@ python src/main.py \
   --max_len 10000 \
   --seed 0 \
   --beam_size 1 \
-  --word_blank 0.2 \
-  --word_dropout 0.1 \
-  --word_shuffle 3 \
+  --word_blank 0. \
+  --word_dropout 0. \
+  --word_shuffle 0. \
   --cuda \
   --anneal_epoch ${anneal[$j]} \
   --temperature 0.01 \
   --klw ${klw[$i]} \
-  --max_pool_k_size 1 \
+  --max_pool_k_size 5 \
   --bt \
   --bt_stop_grad \
   --lm \
