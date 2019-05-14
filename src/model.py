@@ -272,7 +272,10 @@ class Seq2Seq(nn.Module):
       log_prior = self.log_prior(x_trans_lm, x_trans_mask_lm, x_trans_len_lm, y_sampled_reorder)
 
       # KL = E_{x ~ q(z|x, y)}[log q(z|x, y) - log p(z|y)]
-      KL_loss = neg_entropy - log_prior
+      if self.hparams.dual:
+        KL_loss = 0. - log_prior
+      else:
+        KL_loss = neg_entropy - log_prior
       # KL_loss = 0. - log_prior
 
       if self.hparams.avg_len:
