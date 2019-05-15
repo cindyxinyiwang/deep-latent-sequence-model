@@ -12,10 +12,10 @@ export CUDA_VISIBLE_DEVICES="2"
 # declare -a pool=("5" "3" "1")
 # declare -a klw=("0.08" "0.1" "0.15" "0.2")
 
-declare -a pool=("5")
-declare -a klw=("0.01" "0.05" "0.1" "0.3" "0.5")
+declare -a anneal=("5" "10" "-1")
+declare -a klw=("0.1")
 
-for i in "${pool[@]}"
+for i in "${anneal[@]}"
 do
   for j in "${klw[@]}"
   do
@@ -51,9 +51,9 @@ do
       --word_dropout 0. \
       --word_shuffle 0 \
       --cuda \
-      --anneal_epoch 3 \
+      --anneal_epoch $i \
       --temperature 0.01 \
-      --max_pool_k_size $i \
+      --max_pool_k_size 5 \
       --bt \
       --klw $j \
       --lm \

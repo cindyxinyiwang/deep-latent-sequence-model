@@ -7,7 +7,7 @@
 export PYTHONPATH="$(pwd)"
 export CUDA_VISIBLE_DEVICES="2"
 
-declare -a anneal=("5")
+declare -a anneal=("-1" "1" "5" "10" "30" "50")
 
 for i in "${anneal[@]}"
 do
@@ -27,7 +27,7 @@ do
     --d_word_vec=128 \
     --d_model=512 \
     --log_every=100 \
-    --eval_every=1500 \
+    --eval_every=1000 \
     --ppl_thresh=10000 \
     --eval_bleu \
     --batch_size 32 \
@@ -43,7 +43,7 @@ do
     --word_dropout 0.1 \
     --word_shuffle 3 \
     --cuda \
-    --anneal_epoch -1 \
+    --anneal_epoch $i \
     --temperature 0.01 \
     --max_pool_k_size 5 \
     --bt \
