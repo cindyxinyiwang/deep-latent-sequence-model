@@ -6,8 +6,8 @@
 
 export CUDA_VISIBLE_DEVICES=0
 
-data_dir="data/yelp_decipher/yelp_decipher1.0"
-dataset="decipher1_0"
+data_dir="data/yelp_decipher/yelp_decipher0.8"
+dataset="decipher0_8"
 model0_dir=$(printf "pretrained_lm/%s_style0/model.pt" $dataset)
 model1_dir=$(printf "pretrained_lm/%s_style1/model.pt" $dataset)
 

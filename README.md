@@ -26,6 +26,7 @@ Eval: see `scripts/decipher/sanity_check_lm_decipher.sh`
 ## TODO
 
 * ~~(junxian): noise module with and without bpe encoding~~
+
 * ~~(cindy): bpe preprocessed dataset ?~~
 * ~~(cindy): add sampling decoding options in back-translation~~
 * (junxian): restrict each batch has the same y would accelarate LM prior computation
@@ -45,6 +46,14 @@ Eval: see `scripts/decipher/sanity_check_lm_decipher.sh`
   | ----------- | ------- | ------- |
   | **model style 0** | 30.48  | 956140.07  |
   | **model style 1** | 672110.37  | 30.35   |
+
+
+* Decipherment 80%
+
+  | train\test | style 0 | style 1 |
+  | ----------- | ------- | ------- |
+  | **model style 0** | 30.48  | 225102.25  |
+  | **model style 1** | 255250.52  | 30.42   |
 
 * sr_bos bpe vocab32000
 
@@ -66,6 +75,9 @@ Eval: see `scripts/decipher/sanity_check_lm_decipher.sh`
   | ----------- | ------- | ------- |
   | **model style 0** | 132.95  | 175.21  |
   | **model style 1** |  363.10 | 85.25|
+
+## Pre-trained Classifier test accuracy
+Shakespeare: 83.52
   
 
 ## References

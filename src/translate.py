@@ -107,7 +107,7 @@ else:
 #print(x_test)
 test_batch_size = 128 if args.beam_size == 1 else 1
 print("start translate")
-pbar = tqdm(total=data.test_size+10)
+# pbar = tqdm(total=data.test_size+10)
 with torch.no_grad():
   hyps = []
   while True:
@@ -132,9 +132,9 @@ with torch.no_grad():
       out_file.write(line + '\n')
       out_file.flush()
       
-    pbar.update(batch_size)
+    # pbar.update(batch_size)
     if end_of_epoch:
-      pbar.close()
+      # pbar.close()
       break    
 
 if args.debug:
