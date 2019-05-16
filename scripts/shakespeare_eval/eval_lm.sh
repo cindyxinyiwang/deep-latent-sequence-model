@@ -1,7 +1,7 @@
 
 
 python src/lm_lstm.py \
-    --dataset form_em \
+    --dataset shakespeare \
     --style $1 \
     --eval_from $2 \
     --test_src_file $3 \
