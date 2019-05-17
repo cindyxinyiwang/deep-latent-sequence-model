@@ -1,12 +1,12 @@
 #!/bin/bash
 #SBATCH --gres=gpu:1
 #SBATCH --mem=12g
-#SBATCH --array=0-15%4
+#SBATCH --array=0-11%4
 #SBATCH --exclude=compute-0-15,compute-0-17
 ##SBATCH --nodelist=compute-0-7
 #SBATCH -t 0
 
-declare -a klw=("0.01" "0.05" "0.1" "0.3")
+declare -a klw=("0.01" "0.05" "0.1")
 declare -a anneal=("-1" "5" "30" "50")
 declare -a pool=("5")
 
@@ -60,4 +60,5 @@ python src/main.py \
   --bt_stop_grad \
   --lm \
   --avg_len \
+  --dual \
   # --gs_soft \
