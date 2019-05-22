@@ -5,9 +5,7 @@
 #SBATCH --array=0-4%1
 ##SBATCH --nodelist=compute-0-7
 
-declare -a eval_list=("outputs_yelp_CVAE_newopt_dual/yelp_wd0.0_wb0.0_ws0.0_an5_pool5_klw0.1_lr0.001_t0.01_lm_bt_hard_avglen/" \
-    "outputs_yelp_CVAE_newopt/yelp_wd0.0_wb0.0_ws0.0_an3_pool5_klw0.1_lr0.001_t0.01_lm_bt_hard_avglen_dual/" \
-    "outputs_yelp_CVAE_newopt/yelp_wd0.0_wb0.0_ws0.0_an3_pool5_klw0.05_lr0.001_t0.01_lm_bt_hard_avglen_dual/")
+declare -a eval_list=("outputs_yelp_CVAE_newopt/yelp_wd0.0_wb0.0_ws0.0_an1_pool5_klw0.01_lr0.001_t0.01_lm_bt_hard_avglen/")
 
 export CUDA_VISIBLE_DEVICES=$1
 

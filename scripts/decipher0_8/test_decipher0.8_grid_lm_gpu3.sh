@@ -8,8 +8,8 @@ export PYTHONPATH="$(pwd)"
 export CUDA_VISIBLE_DEVICES="2"
 
 declare -a pool=("1")
-declare -a klw=("0.01" "0.03" "0.05" "0.1")
-declare -a anneal=("2" "5")
+declare -a klw=("0.03" "0.02")
+declare -a anneal=("3")
 
 for i in "${anneal[@]}"
 do
