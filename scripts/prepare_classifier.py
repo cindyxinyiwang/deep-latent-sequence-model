@@ -47,7 +47,7 @@ if __name__ == "__main__":
     if not os.path.exists("data"):
         os.makedirs("data")
 
-    os.chdir("pretrained_lm")
+    os.chdir("pretrained_classifer")
 
     yelp_id = ""
     decipher_id = ""
