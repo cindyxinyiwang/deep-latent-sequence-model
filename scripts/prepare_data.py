@@ -35,7 +35,7 @@ def save_response_content(response, destination):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="data downloading")
     parser.add_argument('--dataset', choices=["yelp", "formality", 
-        "decipher", "caption", "sr_bos", "shakespeare", "all"], 
+        "decipher", "caption", "sr_bos", "shakespeare", "copiale", "all"], 
         default="decipher", help='dataset to use')
 
     args = parser.parse_args()
@@ -51,6 +51,7 @@ if __name__ == "__main__":
     caption_id = "1pwvsgNMsdgXRbkMrg-HawFycNKvfihqC"
     sr_bos_id = "1NsSEKOufdvcf0JueHqO_vaBrYgdLgzj8"
     shakespeare_id = "11IeX-I9vcpBca9-idUunX5AKXRD_3Erl"
+    copiale_id = "1fyS84u7Iy8EfstmMad86cfojqrPv4dCC"
 
     if args.dataset == "yelp":
         file_id = [yelp_id]
@@ -64,6 +65,8 @@ if __name__ == "__main__":
         file_id = [sr_bos_id]
     elif args.dataset == "shakespeare":
         file_id = [shakespeare_id]
+    elif args.dataset == "copiale":
+        file_id = [copiale_id]
     else:
         file_id = [yelp_id, formality_id, decipher_id, caption_id, sr_bos_id, shakespeare_id]
 
