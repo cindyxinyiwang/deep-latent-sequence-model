@@ -198,7 +198,7 @@ if args.output_dir == "":
     avg = "_avglen" if args.avg_len else ""
     dual_str = "_dual" if args.dual else ""
 
-    args.output_dir = "outputs_{}_CVAE_newopt{}/{}_wd{}_wb{}_ws{}_an{}_pool{}_klw{}_lr{}_{}{}{}{}{}{}{}{}{}/".format(args.dataset, dual_str, args.dataset,
+    args.output_dir = "outputs_{}_CVAE_iclrrebuttal{}/{}_wd{}_wb{}_ws{}_an{}_pool{}_klw{}_lr{}_{}{}{}{}{}{}{}{}{}/".format(args.dataset, dual_str, args.dataset,
         args.word_dropout, args.word_blank, args.word_shuffle, args.anneal_epoch, 
         args.max_pool_k_size, args.klw, args.lr, dn, lm, bt, decode_y, gs_str, gs_soft, lm_stop_grad, 
         bt_stop_grad, avg)
@@ -225,6 +225,7 @@ def eval(model, classifier, data, crit, step, hparams, eval_bleu=False,
   total_bt_loss = total_noise_loss = total_KL_loss = 0.
   valid_word_loss, valid_rule_loss, valid_eos_loss = 0, 0, 0
   total_lm_length = total_trans_length = 0
+  ELBO_neg = 0
   valid_bleu = None
   if eval_bleu:
     valid_hyp_file = os.path.join(args.output_dir, "dev.trans_{0}".format(step))
@@ -260,6 +261,7 @@ def eval(model, classifier, data, crit, step, hparams, eval_bleu=False,
 
     if hparams.lm:
         val_loss = val_loss + hparams.klw * KL_loss.sum()
+        # val_loss = val_loss + KL_loss.sum()
         total_KL_loss += KL_loss.sum().item()
 
     n_batches += 1
@@ -268,7 +270,6 @@ def eval(model, classifier, data, crit, step, hparams, eval_bleu=False,
     total_noise_loss += noise_loss.item()
     valid_acc += val_acc
     valid_trans_acc += val_transfer_acc
-    total_bt_loss
     # print("{0:<5d} / {1:<5d}".format(val_acc.data[0], y_count))
     if end_of_epoch:
       break
@@ -316,6 +317,7 @@ def eval(model, classifier, data, crit, step, hparams, eval_bleu=False,
 
   log_string = "val_step={0:<6d}".format(step)
   log_string += " total={0:<6.2f}".format(valid_loss / valid_sents)
+  log_string += " neg ELBO={0:<6.2f}".format((total_KL_loss + total_bt_loss) / valid_sents)
   log_string += " KL={0:<6.2f}".format(total_KL_loss / valid_sents)
   log_string += " bt_ppl={0:<6.2f}".format(bt_ppl)
   log_string += " n_ppl={0:<6.2f}".format(noise_ppl)
