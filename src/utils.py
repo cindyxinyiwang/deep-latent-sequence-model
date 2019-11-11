@@ -152,3 +152,37 @@ def grad_clip(params, grad_bound=None):
         p.grad.data.mul_(clip_coef)
   return total_norm
 
+# ported from UnsupervisedMT
+def parse_lambda_config(x):
+  """
+  Parse the configuration of lambda coefficient (for scheduling).
+  x = "3"                  # lambda will be a constant equal to x
+  x = "0:1,1000:0"         # lambda will start from 1 and linearly decrease
+                           # to 0 during the first 1000 iterations
+  x = "0:0,1000:0,2000:1"  # lambda will be equal to 0 for the first 1000
+                           # iterations, then will linearly increase to 1 until iteration 2000
+  """
+  split = x.split(',')
+  if len(split) == 1:
+    return float(x), None
+  else:
+    split = [s.split(':') for s in split]
+    assert all(len(s) == 2 for s in split)
+    assert all(k.isdigit() for k, _ in split)
+    assert all(int(split[i][0]) < int(split[i + 1][0]) for i in range(len(split) - 1))
+    return float(split[0][1]), [(int(k), float(v)) for k, v in split]
+
+
+def lambda_step_func(config, n_iter):
+  """
+  Update a lambda value according to its schedule configuration.
+  """
+  ranges = [i for i in range(len(config) - 1) if config[i][0] <= n_iter < config[i + 1][0]]
+  if len(ranges) == 0:
+    assert n_iter >= config[-1][0]
+    return config[-1][1]
+  assert len(ranges) == 1
+  i = ranges[0]
+  x_a, y_a = config[i]
+  x_b, y_b = config[i + 1]
+  return y_a + (n_iter - x_a) * float(y_b - y_a) / float(x_b - x_a)

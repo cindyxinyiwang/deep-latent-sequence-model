@@ -9,18 +9,20 @@
 export PYTHONPATH="$(pwd)"
 export CUDA_VISIBLE_DEVICES="2"
 
+GPU=${1-0}
+
 # declare -a pool=("5" "3" "1")
 # declare -a klw=("0.08" "0.1" "0.15" "0.2")
 
 declare -a pool=("5")
-declare -a klw=("0.01" "0.03")
-declare -a anneal=("-1" "1" "5")
+declare -a klw=("0.1")
+declare -a anneal=("3")
 
 for i in "${anneal[@]}"
 do
   for j in "${klw[@]}"
   do
-    CUDA_VISIBLE_DEVICES=$1 python src/main.py \
+    CUDA_VISIBLE_DEVICES=${GPU} python src/main.py \
       --dataset yelp \
       --clean_mem_every 5 \
       --reset_output_dir \
@@ -59,7 +61,10 @@ do
       --klw $j \
       --lm \
       --bt_stop_grad \
-      --avg_len \
+      --lambda_reinforce_config 0:0,500:0,1000:1\
+      --nsample 1 \
+      --reinforce \
+      # --avg_len \
       # --gs_soft \
   done
 done

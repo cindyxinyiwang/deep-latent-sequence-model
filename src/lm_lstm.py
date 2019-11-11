@@ -162,6 +162,30 @@ class LSTM_LM(nn.Module):
     # (batch_size)
     return output_logits
 
+  def compute_hard_logits(self, x, x_len):
+    """Cross Entropy in the language case
+    Args:
+      x: (batch_size, seq_len)
+      x_len: list of x lengths
+      x_mask: required if gumbel_softmax is True, 1 denotes mask,
+              size (batch_size, seq_len)
+    Returns:
+      loss: (batch_size). Loss across different sentences
+    """
+
+    #remove end symbol
+    src = x[:, :-1]
+
+    batch_size, seq_len = src.size()
+
+    x_len = [s - 1 for s in x_len]
+
+    # (batch_size, seq_len, vocab_size)
+    output_logits = self.decode(src, x_len, False)
+
+    # (batch_size)
+    return output_logits
+
   def log_probability(self, x, x_len, gumbel_softmax=False, x_mask=None):
     """Cross Entropy in the language case
     Args:

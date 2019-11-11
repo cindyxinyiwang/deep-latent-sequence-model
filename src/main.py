@@ -176,7 +176,17 @@ parser.add_argument("--avg_len", action="store_true",
 parser.add_argument("--dual", action="store_true", 
     help="replace KL term with LM likelihood")
 
+parser.add_argument("--reinforce", action="store_true", 
+    help="use reinforce to do gradient propagation")
+parser.add_argument("--nsample", type=int, 
+    help="samples of reinforce")
+parser.add_argument("--lambda_reinforce_config", type=str, default="1",
+    help="samples of reinforce")
+
 args = parser.parse_args()
+
+if args.reinforce:
+  args.gumbel_softmax = False
 
 if args.bpe_ngram: args.n = None
 
@@ -198,10 +208,13 @@ if args.output_dir == "":
     avg = "_avglen" if args.avg_len else ""
     dual_str = "_dual" if args.dual else ""
 
-    args.output_dir = "outputs_{}_CVAE_newopt{}/{}_wd{}_wb{}_ws{}_an{}_pool{}_klw{}_lr{}_{}{}{}{}{}{}{}{}{}/".format(args.dataset, dual_str, args.dataset,
+    reinforce_str = "_reinforce" if args.reinforce else ""
+    nsample_str = "_ns{}".format(args.nsample) if args.reinforce else ""
+
+    args.output_dir = "outputs_{}_CVAE_newopt{}/{}_wd{}_wb{}_ws{}_an{}_pool{}_klw{}_lr{}_{}{}{}{}{}{}{}{}{}{}{}/".format(args.dataset, dual_str, args.dataset,
         args.word_dropout, args.word_blank, args.word_shuffle, args.anneal_epoch, 
         args.max_pool_k_size, args.klw, args.lr, dn, lm, bt, decode_y, gs_str, gs_soft, lm_stop_grad, 
-        bt_stop_grad, avg)
+        bt_stop_grad, avg, reinforce_str, nsample_str)
 
 args.device = torch.device("cuda" if args.cuda else "cpu")
 
@@ -250,7 +263,7 @@ def eval(model, classifier, data, crit, step, hparams, eval_bleu=False,
     trans_logits, noise_logits, KL_loss, lm_len, trans_len = model.forward(
       x_valid, x_mask, x_len, x_pos_emb_idxs,
       y_valid, y_mask, y_len, y_pos_emb_idxs,
-      y_neg,  y_mask, y_len)
+      y_neg,  y_mask, y_len, eval=True)
 
     total_lm_length += lm_len
     total_trans_length += trans_len
@@ -315,8 +328,9 @@ def eval(model, classifier, data, crit, step, hparams, eval_bleu=False,
   noise_ppl = np.exp(total_noise_loss / valid_words)
 
   log_string = "val_step={0:<6d}".format(step)
-  log_string += " total={0:<6.2f}".format(valid_loss / valid_sents)
+  log_string += " total={0:<6.2f}".format((trans_loss + total_KL_loss)/ valid_sents)
   log_string += " KL={0:<6.2f}".format(total_KL_loss / valid_sents)
+  log_string += " bt_loss={0:<6.2f}".format(trans_loss / valid_sents)
   log_string += " bt_ppl={0:<6.2f}".format(bt_ppl)
   log_string += " n_ppl={0:<6.2f}".format(noise_ppl)
   log_string += " n_acc={0:<5.4f}".format(valid_acc / valid_words)
@@ -339,7 +353,7 @@ def eval(model, classifier, data, crit, step, hparams, eval_bleu=False,
   print(log_string)
   model.train()
   #exit(0)
-  return valid_loss / valid_sents, valid_bleu
+  return (trans_loss + total_KL_loss) / valid_sents, valid_bleu
 
 def train():
   print(args)
@@ -474,12 +488,14 @@ def train():
         anneal_rate = 1.0 / (data.train_size * args.anneal_epoch // hparams.batch_size)
 
   hparams.gs_temp = 1.
+  lambda_reinforce, lambda_reinforce_steps = parse_lambda_config(hparams.lambda_reinforce_config)
   while True:
     step += 1
     x_train, x_mask, x_count, x_len, x_pos_emb_idxs, y_train, y_mask, y_count, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_count, y_sampled_len, y_pos_emb_idxs, batch_size,  eop = data.next_train()
     target_words += (x_count - batch_size)
     total_sents += batch_size
-    trans_logits, noise_logits, KL_loss, lm_len, trans_len = model.forward(x_train, x_mask, x_len, x_pos_emb_idxs, y_train, y_mask, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_len)
+    trans_logits, noise_logits, KL_loss, lm_len, trans_len = model.forward(
+      x_train, x_mask, x_len, x_pos_emb_idxs, y_train, y_mask, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_len)
 
     total_lm_length += lm_len
     total_trans_length += trans_len
@@ -490,9 +506,22 @@ def train():
     cur_tr_loss, trans_loss, noise_loss, cur_tr_acc, cur_tr_transfer_acc = get_performance(crit, trans_logits, 
         noise_logits, labels, hparams, x_len)
 
-    assert(cur_tr_loss.item() > 0)
+    if hparams.reinforce:
+      infer_net_loss, KL_loss = model.reinforce_forward(
+        x_train, x_mask, x_len, x_pos_emb_idxs, 
+        y_train, y_mask, y_len, y_pos_emb_idxs, 
+        y_sampled, y_sampled_mask, y_sampled_len,
+        x_train[:, 1:].contiguous(), hparams.nsample)
 
-    if hparams.lm:
+      if lambda_reinforce_steps is not None:
+        lambda_reinforce = lambda_step_func(lambda_reinforce_steps, step)
+
+      cur_tr_loss = cur_tr_loss + lambda_reinforce * infer_net_loss
+      total_KL_loss += KL_loss.sum().item()
+
+    # assert(cur_tr_loss.item() > 0)
+
+    if hparams.lm and not hparams.reinforce:
         cur_tr_loss = cur_tr_loss + hparams.klw * KL_loss.sum()
         total_KL_loss += KL_loss.sum().item()
 
@@ -560,8 +589,8 @@ def train():
       log_string += " bt_acc={0:<5.4f}".format(total_transfer_corrects / target_words)
 
       # noise weight
-      log_string += " nw={:.4f}".format(hparams.noise_weight)
-
+      log_string += " nw={:.2f}".format(hparams.noise_weight)
+      log_string += " rw={:.2f}".format(lambda_reinforce)
       log_string += " lmlen={}".format(total_lm_length // total_sents)
       log_string += " translen={}".format(total_trans_length // total_sents)
       # log_string += " wpm(k)={0:<5.2f}".format(target_words / (1000 * elapsed))

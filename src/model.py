@@ -230,7 +230,8 @@ class Seq2Seq(nn.Module):
       self.LM = None
 
 
-  def forward(self, x_train, x_mask, x_len, x_pos_emb_idxs, y_train, y_mask, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_len):
+  def forward(self, x_train, x_mask, x_len, x_pos_emb_idxs, y_train, y_mask, y_len, y_pos_emb_idxs, 
+              y_sampled, y_sampled_mask, y_sampled_len, eval=False):
     y_len = torch.tensor(y_len, dtype=torch.float, device=self.hparams.device, requires_grad=False)
     y_sampled_len = torch.tensor(y_sampled_len, dtype=torch.float, device=self.hparams.device, 
         requires_grad=False)
@@ -244,7 +245,8 @@ class Seq2Seq(nn.Module):
     if self.hparams.bt:
       if not self.hparams.gumbel_softmax:
         with torch.no_grad():
-          x_trans, x_trans_mask, x_trans_len, index = self.get_translations(x_train, x_mask, x_len, y_sampled, y_sampled_mask, y_sampled_len)
+          x_trans, x_trans_mask, x_trans_len, index, _ = self.get_translations(x_train, x_mask, x_len, 
+            y_sampled, y_sampled_mask, y_sampled_len, temp=0.01)
         index = torch.tensor(index.copy(), dtype=torch.long, requires_grad=False, device=self.hparams.device)
       else:
         # with torch.no_grad():
@@ -255,7 +257,7 @@ class Seq2Seq(nn.Module):
     else:
       trans_length = 0.
 
-    if self.hparams.lm:
+    if self.hparams.lm and (eval or not self.hparams.reinforce):
       if not lm_flag:
         x_trans_lm, x_trans_mask_lm, x_trans_len_lm, index_lm, org_index_lm, neg_entropy \
           = self.get_soft_translations(x_train, x_mask, x_len, y_sampled, 
@@ -314,6 +316,148 @@ class Seq2Seq(nn.Module):
 
     return trans_logits, noise_logits, KL_loss, lm_length, trans_length
 
+  def reinforce_forward(self, x_train, x_mask, x_len, x_pos_emb_idxs, 
+    y_train, y_mask, y_len, y_pos_emb_idxs, 
+    y_sampled, y_sampled_mask, y_sampled_len,
+    labels, ns=1):
+    """
+    Args:
+      y_sampled: (batch_size, 1)
+
+    """
+    # y_len = torch.tensor(y_len, dtype=torch.float, device=self.hparams.device, requires_grad=False)
+    # y_sampled_len = torch.tensor(y_sampled_len, dtype=torch.float, device=self.hparams.device, 
+    #     requires_grad=False)
+
+    # first translate based on y_sampled
+    # get_translation is to get translation one by one so there is no length order concern
+    # index is a list which represents original position in this batch after reordering 
+    # translated sentences
+    # on-the-fly back translation
+    bs, seq_len = x_train.size()
+    with torch.no_grad():
+      x_trans, x_trans_mask, x_trans_len, index, orig_index = self.get_translations(
+        x_train, x_mask, x_len, y_sampled, y_sampled_mask, y_sampled_len, ns=ns, temp=self.hparams.temperature)
+      index = torch.tensor(index.copy(), dtype=torch.long, requires_grad=False, device=self.hparams.device)
+      orig_index = torch.tensor(orig_index.copy(), dtype=torch.long, requires_grad=False, device=self.hparams.device)
+
+    # x_trans: (bs * ns, seq_len)
+    y_sampled = y_sampled.unsqueeze(1).expand(bs, ns, 1).contiguous().view(bs * ns, -1)
+    y_sampled_mask = y_sampled_mask.unsqueeze(1).expand(bs, ns, 1) \
+                     .contiguous().view(bs * ns, -1)
+
+    # x_trans_merge = x_trans.view(bs * ns, -1)
+    # x_trans_mask_merge = x_trans_mask.view(bs * ns, -1)
+
+    if self.hparams.lm:
+      lm_length = sum(x_trans_len)
+      y_sampled_reorder = torch.index_select(y_sampled, 0, orig_index)
+      # E_{x ~ q(z|x, y)}[log p(z|y)]
+
+      # y_sampled_reorder_t = y_sampled_reorder.view(bs * ns, 1)
+
+      # (bs * ns)
+      log_prior = self.log_prior(x_trans, x_trans_mask, 
+        x_trans_len, y_sampled_reorder, hard=True)
+
+
+      if self.hparams.avg_len:
+        x_trans_len_t = log_prior.new_tensor(x_trans_len)
+        x_trans_len_t = x_trans_len_t - 1
+        log_prior = log_prior / x_trans_len_t
+
+      # convert log_prior back to the original order: (bs * ns)
+      log_prior = torch.index_select(log_prior, 0, index)
+
+      # KL = E_{x ~ q(z|x, y)}[log q(z|x, y) - log p(z|y)]
+      # if self.hparams.dual:
+      #   KL_loss = 0. - log_prior
+      # else:
+      #   KL_loss = neg_entropy - log_prior
+      # KL_loss = 0. - log_prior
+
+    else:
+      log_prior = None
+      lm_length = 0
+
+
+
+    # x_trans: (bs * ns, seq_len)
+    # x_trans_len: List [bs * ns]
+    # back-translation
+    with torch.no_grad():
+      x_trans_enc, x_trans_init = self.encoder(x_trans, x_trans_len, gumbel_softmax=False)
+      x_trans_enc = torch.index_select(x_trans_enc, 0, index)
+      new_x_trans_init = []
+      new_x_trans_init.append(torch.index_select(x_trans_init[0], 0, index))
+      new_x_trans_init.append(torch.index_select(x_trans_init[1], 0, index))
+      x_trans_init = (new_x_trans_init[0], new_x_trans_init[1])
+
+      x_trans_enc_k = self.enc_to_k(x_trans_enc)
+
+      x_train = x_train.unsqueeze(1).expand(bs, ns, seq_len)
+      x_mask = x_mask.unsqueeze(1).expand(bs, ns, seq_len)
+      x_train = x_train.contiguous().view(bs * ns, -1)
+      x_mask = x_mask.contiguous().view(bs * ns, -1)
+
+      y_train = y_train.unsqueeze(1).expand(bs, ns, 1) \
+           .contiguous().view(bs * ns, 1)
+      # (bs * ns, seq_len, vocab)
+      trans_logits = self.decoder(x_trans_enc, x_trans_enc_k, x_trans_init, x_trans_mask, y_train, None, None, x_train, None)
+
+      trans_logits = trans_logits.view(-1, trans_logits.size(-1))
+      labels = labels.unsqueeze(1).expand(bs, ns, *labels.size()[1:])
+      labels = labels.contiguous().view(-1)
+      trans_loss = F.cross_entropy(trans_logits, labels, 
+        ignore_index=self.hparams.pad_id, reduction='none')
+
+      # this is in original order
+      trans_loss = trans_loss.view(bs * ns, -1).sum(-1)
+
+    # x_train_exp = x_train.unsqueeze(1).expand(bs, ns, seq_len).view(bs * ns, -1)
+    x_train_len = x_train.new_tensor(x_len)
+    x_train_len = x_train_len.unsqueeze(1).expand(bs, ns) \
+                  .contiguous().view(bs * ns, -1).squeeze(1)
+
+    x_trans_enc, x_trans_init = self.encoder(x_train, x_train_len, gumbel_softmax=False)
+    x_trans_enc_k = self.enc_to_k(x_trans_enc)
+    x_trans_target = torch.index_select(x_trans, 0, index)
+    trans_logits = self.decoder(x_trans_enc, x_trans_enc_k, x_trans_init, x_trans_mask, 
+      y_sampled, y_sampled_mask, y_sampled_len, x_trans_target, None)
+
+    x_trans_target = x_trans_target[:, 1:].contiguous()
+
+    trans_logits = trans_logits.view(-1, trans_logits.size(-1))
+    x_trans_target = x_trans_target.contiguous().view(-1)
+    # this is in original order
+    final_loss = F.cross_entropy(trans_logits, x_trans_target,
+      ignore_index=self.hparams.pad_id, reduction='none')
+    final_loss = final_loss.view(bs * ns, -1).sum(-1)
+
+    if self.hparams.avg_len:
+      x_trans_len_t = final_loss.new_tensor(x_trans_len)
+      x_trans_len_t = torch.index_select(x_trans_len_t, 0, index)
+      final_loss = final_loss / (x_trans_len_t - 1)
+
+    if self.hparams.lm:
+      if not self.hparams.dual:
+        weight_score = final_loss.detach()
+        KL_loss = -weight_score - log_prior
+        weight_score = -trans_loss - self.hparams.klw * (-weight_score - log_prior)
+      else:
+        weight_score = -trans_loss + self.hparams.klw * log_prior
+        KL_loss = -log_prior
+      KL_loss = KL_loss.view(bs, ns).mean(1)
+    else:
+      weight_score = -trans_loss
+      KL_loss = None
+
+    # (bs * ns)
+    final_loss = weight_score * final_loss
+
+
+    return final_loss.view(bs, ns).mean(1).sum(), KL_loss
+
   def denoise_ae(self, x_train, x_mask, x_len, y_train, y_mask, y_len):
     # [batch_size, x_len, d_model * 2]
     x_noise, x_noise_mask, x_noise_len, index  = self.add_noise(x_train, x_mask, x_len)
@@ -331,15 +475,20 @@ class Seq2Seq(nn.Module):
 
     return noise_logits
 
-  def log_prior(self, x, x_mask, x_len, y_sampled):
+  def log_prior(self, x, x_mask, x_len, y_sampled, hard=False):
     x_mask = x_mask.float()
     y_sampled = y_sampled.squeeze(-1).float()
 
-    # remove start symbol
-    tgt = x[:, 1:]
 
-    logits_0 = self.LM[0].compute_gumbel_logits(x, x_len)
-    logits_1 = self.LM[1].compute_gumbel_logits(x, x_len)
+    # remove start symbol
+    tgt = x[:, 1:].contiguous()
+
+    if hard:
+      logits_0 = self.LM[0].compute_hard_logits(x, x_len)
+      logits_1 = self.LM[1].compute_hard_logits(x, x_len)      
+    else:
+      logits_0 = self.LM[0].compute_gumbel_logits(x, x_len)
+      logits_1 = self.LM[1].compute_gumbel_logits(x, x_len)
 
     x_mask = x_mask[:, 1:]
 
@@ -350,15 +499,25 @@ class Seq2Seq(nn.Module):
         log_p0 = log_p0.detach()
         log_p1 = log_p1.detach()
 
-    ll0 = ((log_p0 * tgt).sum(dim=2) * (1. - x_mask)).sum(dim=1)
-    ll1 = ((log_p1 * tgt).sum(dim=2) * (1. - x_mask)).sum(dim=1)
+    if hard:
+      bs, seq_len, _ = log_p0.size()
+      ll0 = -F.nll_loss(log_p0.contiguous().view(-1, log_p0.size(-1)), tgt.view(-1),
+        ignore_index=self.hparams.pad_id, reduction='none').view(bs, seq_len).sum(1)
+      ll1 = -F.nll_loss(log_p1.contiguous().view(-1, log_p1.size(-1)), tgt.view(-1),
+        ignore_index=self.hparams.pad_id, reduction='none').view(bs, seq_len).sum(1)
+    else:
+      ll0 = ((log_p0 * tgt).sum(dim=2) * (1. - x_mask)).sum(dim=1)
+      ll1 = ((log_p1 * tgt).sum(dim=2) * (1. - x_mask)).sum(dim=1)
 
     return (1. - y_sampled) * ll0 + y_sampled * ll1
 
 
-  def get_translations(self, x_train, x_mask, x_len, y_sampled, y_sampled_mask, y_sampled_len):
+  def get_translations(self, x_train, x_mask, x_len, 
+                        y_sampled, y_sampled_mask, y_sampled_len, 
+                        ns=1, temp=0.01):
     # list
-    translated_x = self.translate(x_train, x_mask, x_len, y_sampled, y_sampled_mask, y_sampled_len, sampling=True)
+    translated_x = self.translate(x_train, x_mask, x_len, y_sampled, y_sampled_mask, y_sampled_len, 
+      ns=ns, sampling=True, temp=temp)
     translated_x = [[self.hparams.bos_id]+x+[self.hparams.eos_id] for x in translated_x]
 
 
@@ -372,7 +531,7 @@ class Seq2Seq(nn.Module):
       reverse_index[idx] = i
 
     x_trans, x_mask, x_count, x_len, _ = self.data._pad(translated_x, self.hparams.pad_id)
-    return x_trans, x_mask, x_len, reverse_index
+    return x_trans, x_mask, x_len, reverse_index, index
 
   def get_soft_translations(self, x_train, x_mask, x_len, 
                             y_sampled, y_sampled_mask, y_sampled_len, max_len=20):
@@ -543,9 +702,10 @@ class Seq2Seq(nn.Module):
     # index = torch.tensor(np.arange(x_train.size(0)), dtype=torch.long, requires_grad=False, device=self.hparams.device)
     # return x_train, x_mask, x_len, index
 
-  def translate(self, x_train, x_mask, x_len, y, y_mask, y_len, max_len=100, beam_size=2, poly_norm_m=0, sampling=False):
+  def translate(self, x_train, x_mask, x_len, y, y_mask, y_len, max_len=100, beam_size=2, poly_norm_m=0, 
+    sampling=False, ns=1, temp=0.01):
     if sampling:
-        hyps = self.sampling_translate(x_train, x_mask, x_len, y, y_mask, y_len, max_len=max_len)
+        hyps = self.sampling_translate(x_train, x_mask, x_len, y, y_mask, y_len, max_len=max_len, ns=ns, temp=temp)
         return hyps
 
     if beam_size == 1:
@@ -568,15 +728,29 @@ class Seq2Seq(nn.Module):
       hyps.append(hyp.y[1:-1])
     return hyps
 
-  def sampling_translate(self, x_train, x_mask, x_len, y, y_mask, y_len, max_len=100, greedy=False):
+  def sampling_translate(self, x_train, x_mask, x_len, 
+    y, y_mask, y_len, max_len=100, greedy=False, ns=1,
+    temp=0.01):
     batch_size = x_train.size(0)
 
-    if isinstance(y_len, list):
-      y_len = torch.tensor(y_len, dtype=torch.float, device=self.hparams.device, requires_grad=False)
+    # if isinstance(y_len, list):
+    #   y_len = torch.tensor(y_len, dtype=torch.float, device=self.hparams.device, requires_grad=False)
+    seq_len = x_train.size(1)
+    x_train = x_train.unsqueeze(1).expand(batch_size, ns, seq_len)
+    x_mask = x_mask.unsqueeze(1).expand(batch_size, ns, seq_len)
+    x_len = x_train.new_tensor(x_len)
+    x_len = x_len.unsqueeze(1).expand(batch_size, ns) \
+                 .contiguous().view(batch_size * ns, -1).squeeze(1)
 
+    x_train = x_train.contiguous().view(batch_size * ns, -1)
+    x_mask = x_mask.contiguous().view(batch_size * ns, -1)
+
+    y = y.unsqueeze(1).expand(batch_size, ns, 1) \
+         .contiguous().view(batch_size * ns, 1)
     # x_enc: (batch, seq_len, 2 * d_model)
     x_enc, dec_init = self.encoder(x_train, x_len)
 
+    batch_size = batch_size * ns
     # (batch, seq_len, d_model)
     x_enc_k = self.enc_to_k(x_enc)
     length = 0
@@ -616,7 +790,9 @@ class Seq2Seq(nn.Module):
       if greedy:
         sampled_y = torch.argmax(logits, dim=1)
       else:
-        logits = logits / self.hparams.temperature
+        logits = logits / temp
+
+        # (ns, bs)
         sampled_y = torch.distributions.Categorical(logits=logits).sample()
       
       hyp.y = sampled_y
