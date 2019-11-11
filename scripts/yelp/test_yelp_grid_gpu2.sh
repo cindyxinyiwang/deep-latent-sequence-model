@@ -7,7 +7,7 @@
 export PYTHONPATH="$(pwd)"
 export CUDA_VISIBLE_DEVICES="2"
 
-declare -a arr=("0.1")
+declare -a arr=("0.5")
 
 for i in "${arr[@]}"
 do

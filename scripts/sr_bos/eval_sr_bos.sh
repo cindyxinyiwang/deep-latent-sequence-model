@@ -1,4 +1,4 @@
-export CUDA_VISIBLE_DEVICES=2
+export CUDA_VISIBLE_DEVICES=1
 
 printf "\ntranslate sr -> bos\n"
 ./scripts/sr_bos/translate_sr_bos.sh $1 data/sr_bos/test_0.spm32000.txt data/sr_bos/test_0.attr transfer_bos.txt

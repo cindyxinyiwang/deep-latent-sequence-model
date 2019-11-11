@@ -230,6 +230,9 @@ def eval(model, classifier, data, crit, step, hparams, eval_bleu=False,
   if eval_bleu:
     valid_hyp_file = os.path.join(args.output_dir, "dev.trans_{0}".format(step))
     out_file = open(valid_hyp_file, 'w', encoding='utf-8')
+
+  tmp_temperature = hparams.temperature
+  hparams.temperature = 1.
   while True:
     # clear GPU memory
     gc.collect()
@@ -341,6 +344,8 @@ def eval(model, classifier, data, crit, step, hparams, eval_bleu=False,
   print(log_string)
   model.train()
   #exit(0)
+  hparams.temperature = tmp_temperature
+  
   return valid_loss / valid_sents, valid_bleu
 
 def train():
@@ -553,6 +558,7 @@ def train():
       log_string += " steps={0:<6.2f}".format((step / args.update_batch) / 1000)
       log_string += " lr={0:<9.7f}".format(lr)
       log_string += " total={0:<7.2f}".format(total_loss / total_sents)
+      log_string += " neg ELBO={0:<7.2f}".format((total_KL_loss + total_bt_loss) / total_sents)
       log_string += " KL={0:<7.2f}".format(total_KL_loss / total_sents)
       log_string += " |g|={0:<5.2f}".format(grad_norm)
 
