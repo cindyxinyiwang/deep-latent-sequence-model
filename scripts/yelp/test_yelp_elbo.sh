@@ -7,14 +7,14 @@
 export PYTHONPATH="$(pwd)"
 export CUDA_VISIBLE_DEVICES="2"
 
-declare -a arr=("0.2")
+declare -a arr=("0.1")
 
 for i in "${arr[@]}"
 do
   CUDA_VISIBLE_DEVICES=$1 python src/main.py \
     --dataset yelp \
     --clean_mem_every 5 \
-    --reset_output_dir \
+    --output_dir outputs_yelp_CVAE_iclrrebuttal/yelp_wd0.0_wb0.0_ws0.0_an3_pool5_klw0.1_lr0.001_t0.01_lm_bt_hard_avglen \
     --classifier_dir="pretrained_classifer/yelp" \
     --data_path data/test/ \
     --train_src_file data/yelp/train.txt \
@@ -32,11 +32,10 @@ do
     --eval_bleu \
     --batch_size 32 \
     --valid_batch_size 128 \
-    --patience -1 \
+    --patience 5 \
     --lr_dec 0.8 \
     --dropout 0.3 \
     --max_len 10000 \
-    --seed 0 \
     --beam_size 1 \
     --word_blank 0. \
     --word_dropout 0. \
@@ -48,9 +47,11 @@ do
     --bt \
     --klw $i \
     --lm \
+    --seed 303 \
+    --load_model \
+    --load_for_test \
     --avg_len \
-    --gumbel_softmax \
-    --n_train_steps 50000 \
+    # --gumbel_softmax \
     # --bt_stop_grad \
     # --gs_soft \
 done

@@ -84,11 +84,11 @@ class Encoder(nn.Module):
     word_emb = self.dropout(word_emb)
     packed_word_emb = pack_padded_sequence(word_emb, x_len, batch_first=True)
     enc_output, (ht, ct) = self.layer(packed_word_emb)
-    enc_output, _ = pad_packed_sequence(enc_output, batch_first=True, 
+    enc_output, _ = pad_packed_sequence(enc_output, batch_first=True,
       padding_value=self.hparams.pad_id)
     #enc_output, (ht, ct) = self.layer(word_emb)
     # enc_output = enc_output.permute(1, 0, 2)
-    
+
     # max pooling
     if self.hparams.max_pool_k_size > 1:
       enc_output = F.max_pool1d(enc_output.permute(0, 2, 1), kernel_size=self.hparams.max_pool_k_size, padding=(self.hparams.max_pool_k_size // 2)).permute(0, 2, 1)
@@ -137,7 +137,7 @@ class Decoder(nn.Module):
     # if self.hparams.cuda:
     #   input_feed = input_feed.cuda()
 
-    # 
+    #
     # [batch_size, y_len, d_word_vec]
     x_emb = self.word_emb(x_train[:, :-1])
 
@@ -165,7 +165,7 @@ class Decoder(nn.Module):
 
       input_feed = ctx
       hidden = (h_t, c_t)
-      
+
     # [len_y, batch_size, trg_vocab_size]
     logits = self.readout(torch.stack(pre_readouts)).transpose(0, 1).contiguous()
     return logits
@@ -230,26 +230,32 @@ class Seq2Seq(nn.Module):
       self.LM = None
 
 
-  def forward(self, x_train, x_mask, x_len, x_pos_emb_idxs, y_train, y_mask, y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_len):
+  def forward(self, x_train, x_mask, x_len, x_pos_emb_idxs, y_train, y_mask,
+    y_len, y_pos_emb_idxs, y_sampled, y_sampled_mask, y_sampled_len,
+    eval=False, temperature=None):
+
+    if temperature is None:
+        temperature = self.hparams.temperature
+
     y_len = torch.tensor(y_len, dtype=torch.float, device=self.hparams.device, requires_grad=False)
-    y_sampled_len = torch.tensor(y_sampled_len, dtype=torch.float, device=self.hparams.device, 
+    y_sampled_len = torch.tensor(y_sampled_len, dtype=torch.float, device=self.hparams.device,
         requires_grad=False)
 
     # first translate based on y_sampled
     # get_translation is to get translation one by one so there is no length order concern
-    # index is a list which represents original position in this batch after reordering 
+    # index is a list which represents original position in this batch after reordering
     # translated sentences
     # on-the-fly back translation
     lm_flag = False
     if self.hparams.bt:
-      if not self.hparams.gumbel_softmax:
+      if eval or (not self.hparams.gumbel_softmax):
         with torch.no_grad():
-          x_trans, x_trans_mask, x_trans_len, index = self.get_translations(x_train, x_mask, x_len, y_sampled, y_sampled_mask, y_sampled_len)
+          x_trans, x_trans_mask, x_trans_len, index = self.get_translations(x_train, x_mask, x_len, y_sampled, y_sampled_mask, y_sampled_len, temperature)
         index = torch.tensor(index.copy(), dtype=torch.long, requires_grad=False, device=self.hparams.device)
       else:
         # with torch.no_grad():
         lm_flag = True
-        x_trans, x_trans_mask, x_trans_len, index, org_index, neg_entropy = self.get_soft_translations(x_train, x_mask, x_len, 
+        x_trans, x_trans_mask, x_trans_len, index, org_index, neg_entropy = self.get_soft_translations(x_train, x_mask, x_len,
           y_sampled, y_sampled_mask, y_sampled_len)
       trans_length = sum(x_trans_len)
     else:
@@ -258,11 +264,11 @@ class Seq2Seq(nn.Module):
     if self.hparams.lm:
       if not lm_flag:
         x_trans_lm, x_trans_mask_lm, x_trans_len_lm, index_lm, org_index_lm, neg_entropy \
-          = self.get_soft_translations(x_train, x_mask, x_len, y_sampled, 
-            y_sampled_mask, y_sampled_len)   
+          = self.get_soft_translations(x_train, x_mask, x_len, y_sampled,
+            y_sampled_mask, y_sampled_len)
       else:
         x_trans_lm = x_trans
-        x_trans_mask_lm = x_trans_mask     
+        x_trans_mask_lm = x_trans_mask
         x_trans_len_lm = x_trans_len
         org_index_lm = org_index
 
@@ -291,7 +297,7 @@ class Seq2Seq(nn.Module):
       if self.hparams.bt_stop_grad and self.hparams.gumbel_softmax:
         x_trans = x_trans.detach()
 
-      x_trans_enc, x_trans_init = self.encoder(x_trans, x_trans_len, gumbel_softmax=self.hparams.gumbel_softmax)
+      x_trans_enc, x_trans_init = self.encoder(x_trans, x_trans_len, gumbel_softmax=(not eval and self.hparams.gumbel_softmax))
       x_trans_enc = torch.index_select(x_trans_enc, 0, index)
       new_x_trans_init = []
       new_x_trans_init.append(torch.index_select(x_trans_init[0], 0, index))
@@ -326,7 +332,7 @@ class Seq2Seq(nn.Module):
 
     x_noise_enc_k = self.enc_to_k(x_noise_enc)
     # [batch_size, y_len-1, trg_vocab_size]
-    noise_logits = self.decoder(x_noise_enc, x_noise_enc_k, x_noise_init, 
+    noise_logits = self.decoder(x_noise_enc, x_noise_enc_k, x_noise_init,
       x_noise_mask, y_train, y_mask, y_len, x_train, x_len)
 
     return noise_logits
@@ -356,9 +362,10 @@ class Seq2Seq(nn.Module):
     return (1. - y_sampled) * ll0 + y_sampled * ll1
 
 
-  def get_translations(self, x_train, x_mask, x_len, y_sampled, y_sampled_mask, y_sampled_len):
+  def get_translations(self, x_train, x_mask, x_len, y_sampled, y_sampled_mask, y_sampled_len, temperature=None):
     # list
-    translated_x = self.translate(x_train, x_mask, x_len, y_sampled, y_sampled_mask, y_sampled_len, sampling=True)
+    translated_x = self.translate(x_train, x_mask, x_len, y_sampled, y_sampled_mask, y_sampled_len,
+        temperature=temperature, sampling=True)
     translated_x = [[self.hparams.bos_id]+x+[self.hparams.eos_id] for x in translated_x]
 
 
@@ -374,7 +381,7 @@ class Seq2Seq(nn.Module):
     x_trans, x_mask, x_count, x_len, _ = self.data._pad(translated_x, self.hparams.pad_id)
     return x_trans, x_mask, x_len, reverse_index
 
-  def get_soft_translations(self, x_train, x_mask, x_len, 
+  def get_soft_translations(self, x_train, x_mask, x_len,
                             y_sampled, y_sampled_mask, y_sampled_len, max_len=20):
     batch_size = x_train.size(0)
 
@@ -459,14 +466,14 @@ class Seq2Seq(nn.Module):
 
         elif length == (x_len[i] -1) and self.hparams.gs_soft:
           decoded_batch[i].append(eos_vec.clone())
-          
+
           trans_len[i] += 1
         else:
           decoded_batch[i].append(pad_vec.clone())
 
       if not self.hparams.gs_soft:
         mask = torch.mul((sampled_y != end_symbol).sum(1) > 0, mask)
-      
+
 
     if not self.hparams.gs_soft:
       if length >= max_len and mask.sum().item() != 0:
@@ -491,7 +498,7 @@ class Seq2Seq(nn.Module):
     for i, idx in enumerate(index):
       reverse_index[idx] = i
 
-    index_t = torch.tensor(index.copy(), dtype=torch.long, requires_grad=False, device=self.hparams.device)    
+    index_t = torch.tensor(index.copy(), dtype=torch.long, requires_grad=False, device=self.hparams.device)
     reverse_index = torch.tensor(reverse_index.copy(), dtype=torch.long, requires_grad=False, device=self.hparams.device)
 
     x_trans = torch.index_select(x_trans, dim=0, index=index_t)
@@ -538,14 +545,14 @@ class Seq2Seq(nn.Module):
     bs, max_len = x_train.size()
     mask = [[0] * x_len[i] + [1] * (max_len - x_len[i]) for i in range(bs)]
     mask = torch.tensor(mask, dtype=torch.uint8, requires_grad=False, device=self.hparams.device)
-    
+
     return x_train, mask, x_len, reverse_index
     # index = torch.tensor(np.arange(x_train.size(0)), dtype=torch.long, requires_grad=False, device=self.hparams.device)
     # return x_train, x_mask, x_len, index
 
-  def translate(self, x_train, x_mask, x_len, y, y_mask, y_len, max_len=100, beam_size=2, poly_norm_m=0, sampling=False):
+  def translate(self, x_train, x_mask, x_len, y, y_mask, y_len, max_len=100, beam_size=2, poly_norm_m=0, temperature=None, sampling=False):
     if sampling:
-        hyps = self.sampling_translate(x_train, x_mask, x_len, y, y_mask, y_len, max_len=max_len)
+        hyps = self.sampling_translate(x_train, x_mask, x_len, y, y_mask, y_len, max_len=max_len, temperature=temperature)
         return hyps
 
     if beam_size == 1:
@@ -568,7 +575,9 @@ class Seq2Seq(nn.Module):
       hyps.append(hyp.y[1:-1])
     return hyps
 
-  def sampling_translate(self, x_train, x_mask, x_len, y, y_mask, y_len, max_len=100, greedy=False):
+  def sampling_translate(self, x_train, x_mask, x_len, y, y_mask, y_len, max_len=100, temperature=None, greedy=False):
+    if temperature is None:
+      temperature = self.hparams.temperature
     batch_size = x_train.size(0)
 
     if isinstance(y_len, list):
@@ -582,13 +591,13 @@ class Seq2Seq(nn.Module):
     length = 0
     input_feed = torch.zeros((batch_size, self.hparams.d_model * 2),
       requires_grad=False, device=self.hparams.device)
-    decoder_input = torch.tensor([self.hparams.bos_id] * batch_size, 
+    decoder_input = torch.tensor([self.hparams.bos_id] * batch_size,
       dtype=torch.long, device=self.hparams.device)
     hyp = Hyp(state=dec_init, y=decoder_input, ctx_tm1=input_feed, score=0.)
     #attr_emb = self.decoder.attr_emb(y).sum(1) / y_len.unsqueeze(1)
     attr_emb = self.decoder.attr_emb(y).sum(1)
     mask = torch.ones((batch_size), dtype=torch.uint8, device=self.hparams.device)
-    end_symbol = torch.tensor([self.hparams.eos_id] * batch_size, 
+    end_symbol = torch.tensor([self.hparams.eos_id] * batch_size,
       dtype=torch.long, device=self.hparams.device)
 
     decoded_batch = [[] for _ in range(batch_size)]
@@ -596,7 +605,7 @@ class Seq2Seq(nn.Module):
       length += 1
       y_tm1 = hyp.y
       if self.hparams.decode_on_y:
-        # y_tm1 = torch.tensor([y_tm1], dtype=torch.long, 
+        # y_tm1 = torch.tensor([y_tm1], dtype=torch.long,
         #   requires_grad=False, device=self.hparams.device)
         y_tm1 = self.decoder.word_emb(y_tm1)
         y_tm1 = torch.cat([y_tm1, attr_emb], dim=-1)
@@ -616,13 +625,13 @@ class Seq2Seq(nn.Module):
       if greedy:
         sampled_y = torch.argmax(logits, dim=1)
       else:
-        logits = logits / self.hparams.temperature
+        logits = logits / temperature
         sampled_y = torch.distributions.Categorical(logits=logits).sample()
-      
+
       hyp.y = sampled_y
 
       mask = torch.mul((sampled_y != end_symbol), mask)
-      
+
       for i in range(batch_size):
         if mask[i].item():
           decoded_batch[i].append(sampled_y[i].item())
@@ -644,7 +653,7 @@ class Seq2Seq(nn.Module):
       new_hyp_score_list = []
       for i, hyp in enumerate(active_hyp):
         if self.hparams.decode_on_y:
-          y_tm1 = torch.tensor([int(hyp.y[-1])], dtype=torch.long, 
+          y_tm1 = torch.tensor([int(hyp.y[-1])], dtype=torch.long,
             requires_grad=False, device=self.hparams.device)
           y_tm1 = self.decoder.word_emb(y_tm1)
           y_tm1 = torch.cat([y_tm1, attr_emb], dim=-1)

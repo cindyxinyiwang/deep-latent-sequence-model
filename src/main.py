@@ -48,6 +48,7 @@ parser.add_argument("--pretrained_src_emb_list", type=str, default=None, help="n
 parser.add_argument("--pretrained_trg_emb", type=str, default=None, help="ngram n")
 
 parser.add_argument("--load_model", action="store_true", help="load an existing model")
+parser.add_argument("--load_for_test", action="store_true", help="load an existing model and test")
 parser.add_argument("--reset_output_dir", action="store_true", help="delete output directory if it exists")
 parser.add_argument("--output_dir", type=str, default="", help="path to output directory")
 parser.add_argument("--classifier_dir", type=str, default="", help="directory that stores the classifier model")
@@ -169,11 +170,11 @@ parser.add_argument("--gs_soft", action="store_true", help="whether soft gumbel 
 parser.add_argument("--klw", type=float, default=1., help="KL loss weight")
 parser.add_argument("--lm_stop_grad", action="store_true")
 parser.add_argument("--bt", action="store_true", help="whether use back translation loss")
-parser.add_argument("--bt_stop_grad", action="store_true", 
+parser.add_argument("--bt_stop_grad", action="store_true",
     help="whether stop gradients through back translation, ignored when gumbel_softmax is false")
-parser.add_argument("--avg_len", action="store_true", 
+parser.add_argument("--avg_len", action="store_true",
     help="whether average over sentence length when computing loss")
-parser.add_argument("--dual", action="store_true", 
+parser.add_argument("--dual", action="store_true",
     help="replace KL term with LM likelihood")
 
 args = parser.parse_args()
@@ -189,7 +190,7 @@ if args.output_dir == "":
     else:
       gs_soft = ""
 
-    
+
     gs_str = "_gs" if args.gumbel_softmax else ""
 
     lm_stop_grad = "__init__lmsg" if args.lm_stop_grad and args.lm else ""
@@ -199,8 +200,8 @@ if args.output_dir == "":
     dual_str = "_dual" if args.dual else ""
 
     args.output_dir = "outputs_{}_CVAE_iclrrebuttal{}/{}_wd{}_wb{}_ws{}_an{}_pool{}_klw{}_lr{}_{}{}{}{}{}{}{}{}{}/".format(args.dataset, dual_str, args.dataset,
-        args.word_dropout, args.word_blank, args.word_shuffle, args.anneal_epoch, 
-        args.max_pool_k_size, args.klw, args.lr, dn, lm, bt, decode_y, gs_str, gs_soft, lm_stop_grad, 
+        args.word_dropout, args.word_blank, args.word_shuffle, args.anneal_epoch,
+        args.max_pool_k_size, args.klw, args.lr, dn, lm, bt, decode_y, gs_str, gs_soft, lm_stop_grad,
         bt_stop_grad, avg)
 
 args.device = torch.device("cuda" if args.cuda else "cpu")
@@ -223,6 +224,7 @@ def eval(model, classifier, data, crit, step, hparams, eval_bleu=False,
 
   valid_total = valid_rule_count = valid_word_count = valid_sents = valid_eos_count = 0
   total_bt_loss = total_noise_loss = total_KL_loss = 0.
+  total_bt_elbo_loss = total_kl_elbo_loss = 0.
   valid_word_loss, valid_rule_loss, valid_eos_loss = 0, 0, 0
   total_lm_length = total_trans_length = 0
   ELBO_neg = 0
@@ -231,8 +233,6 @@ def eval(model, classifier, data, crit, step, hparams, eval_bleu=False,
     valid_hyp_file = os.path.join(args.output_dir, "dev.trans_{0}".format(step))
     out_file = open(valid_hyp_file, 'w', encoding='utf-8')
 
-  tmp_temperature = hparams.temperature
-  hparams.temperature = 1.
   while True:
     # clear GPU memory
     gc.collect()
@@ -254,7 +254,18 @@ def eval(model, classifier, data, crit, step, hparams, eval_bleu=False,
     trans_logits, noise_logits, KL_loss, lm_len, trans_len = model.forward(
       x_valid, x_mask, x_len, x_pos_emb_idxs,
       y_valid, y_mask, y_len, y_pos_emb_idxs,
-      y_neg,  y_mask, y_len)
+      y_neg,  y_mask, y_len, eval=True)
+
+    trans_elbo_logits = trans_logits
+    noise_elbo_logits = noise_logits
+    KL_elbo_loss = KL_loss
+    lm_elbo_len = lm_len
+    trans_elbo_len = trans_len
+
+    # trans_elbo_logits, noise_elbo_logits, KL_elbo_loss, lm_elbo_len, trans_elbo_len = model.forward(
+    #   x_valid, x_mask, x_len, x_pos_emb_idxs,
+    #   y_valid, y_mask, y_len, y_pos_emb_idxs,
+    #   y_neg,  y_mask, y_len, temperature=1.0, eval=True)
 
     total_lm_length += lm_len
     total_trans_length += trans_len
@@ -262,14 +273,19 @@ def eval(model, classifier, data, crit, step, hparams, eval_bleu=False,
     val_loss, trans_loss, noise_loss, val_acc, val_transfer_acc = \
                 get_performance(crit, trans_logits, noise_logits, labels, hparams, x_len)
 
+    _, trans_elbo_loss, _, _, _ = \
+                get_performance(crit, trans_elbo_logits, noise_elbo_logits, labels, hparams, x_len)
+
     if hparams.lm:
         val_loss = val_loss + hparams.klw * KL_loss.sum()
         # val_loss = val_loss + KL_loss.sum()
         total_KL_loss += KL_loss.sum().item()
+        total_kl_elbo_loss += KL_elbo_loss.sum().item()
 
     n_batches += 1
     valid_loss += val_loss.item()
     total_bt_loss += trans_loss.item()
+    total_bt_elbo_loss += trans_elbo_loss.item()
     total_noise_loss += noise_loss.item()
     valid_acc += val_acc
     valid_trans_acc += val_transfer_acc
@@ -320,7 +336,7 @@ def eval(model, classifier, data, crit, step, hparams, eval_bleu=False,
 
   log_string = "val_step={0:<6d}".format(step)
   log_string += " total={0:<6.2f}".format(valid_loss / valid_sents)
-  log_string += " neg ELBO={0:<6.2f}".format((total_KL_loss + total_bt_loss) / valid_sents)
+  log_string += " neg ELBO={0:<6.6f}".format((total_kl_elbo_loss + total_bt_elbo_loss) / valid_sents)
   log_string += " KL={0:<6.2f}".format(total_KL_loss / valid_sents)
   log_string += " bt_ppl={0:<6.2f}".format(bt_ppl)
   log_string += " n_ppl={0:<6.2f}".format(noise_ppl)
@@ -344,8 +360,7 @@ def eval(model, classifier, data, crit, step, hparams, eval_bleu=False,
   print(log_string)
   model.train()
   #exit(0)
-  hparams.temperature = tmp_temperature
-  
+
   return valid_loss / valid_sents, valid_bleu
 
 def train():
@@ -458,6 +473,10 @@ def train():
   num_params = count_params(trainable_params)
   print("Model has {0} params".format(num_params))
 
+  if args.load_for_test:
+    val_ppl, val_bleu = eval(model, classifier, data, crit, step, hparams, eval_bleu=args.eval_bleu, valid_batch_size=args.valid_batch_size)
+    return
+
   print("-" * 80)
   print("start training...")
   start_time = log_start_time = time.time()
@@ -494,7 +513,7 @@ def train():
     # not predicting the start symbol
     labels = x_train[:, 1:].contiguous().view(-1)
 
-    cur_tr_loss, trans_loss, noise_loss, cur_tr_acc, cur_tr_transfer_acc = get_performance(crit, trans_logits, 
+    cur_tr_loss, trans_loss, noise_loss, cur_tr_acc, cur_tr_transfer_acc = get_performance(crit, trans_logits,
         noise_logits, labels, hparams, x_len)
 
     assert(cur_tr_loss.item() > 0)
