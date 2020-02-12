@@ -23,7 +23,7 @@ Datasets used in sentiment transfer, decipherment, author imitation, and related
 ```
 python prepare_data.py --dataset [yelp|decipher|shakespeare|src_bos]
 ```
-Downloaded data is located in `./data` folder. Please see the [original repo](https://github.com/raosudha89/GYAFC-corpus) to access the formality transfer dataset.
+Downloaded data is located in `./data` folder. For the formality transfer dataset please see its [official repo](https://github.com/raosudha89/GYAFC-corpus).
 
 ## Pretrained LMs and Classifiers
 Our approach requires pretrained LMs as priors for each domain during trainining, and an oracle classifier is required at test time to compute the accuracy for sentiment, author imitation, and formality transfer tasks. Here we provide our pretrained LMs and classifiers to reproduce the reported results. (Note that we pretrain these models in PyTorch 1.4, inconsistent PyTorch versions might cause loading problems.)
