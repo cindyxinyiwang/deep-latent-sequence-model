@@ -125,8 +125,6 @@ parser.add_argument("--d_v", type=int, default=64,
 parser.add_argument("--pos_emb_size", type=int, default=None, 
     help="size of trainable pos emb")
 
-parser.add_argument("--data_path", type=str, default=None, 
-    help="path to all data")
 parser.add_argument("--train_src_file", type=str, default=None, 
     help="source train file")
 parser.add_argument("--train_trg_file", type=str, default=None, 

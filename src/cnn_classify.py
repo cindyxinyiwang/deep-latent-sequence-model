@@ -398,7 +398,6 @@ if __name__ == "__main__":
   parser.add_argument("--d_v", type=int, default=64, help="size of attention head")
   parser.add_argument("--pos_emb_size", type=int, default=None, help="size of trainable pos emb")
 
-  parser.add_argument("--data_path", type=str, default=None, help="path to all data")
   parser.add_argument("--train_src_file", type=str, default=None, help="source train file")
   parser.add_argument("--train_trg_file", type=str, default=None, help="target train file")
   parser.add_argument("--dev_src_file", type=str, default=None, help="source valid file")
@@ -434,7 +433,7 @@ if __name__ == "__main__":
   parser.add_argument("--patience", type=int, default=-1, help="patience")
   parser.add_argument("--eval_end_epoch", action="store_true", help="whether to reload the hparams")
 
-  parser.add_argument("--seed", type=int, default=19920206, help="random seed")
+  parser.add_argument("--seed", type=int, default=0, help="random seed")
 
   parser.add_argument("--init_range", type=float, default=0.1, help="L2 init range")
   parser.add_argument("--init_type", type=str, default="uniform", help="uniform|xavier_uniform|xavier_normal|kaiming_uniform|kaiming_normal")

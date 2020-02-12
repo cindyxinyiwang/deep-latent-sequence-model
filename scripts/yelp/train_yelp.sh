@@ -10,7 +10,6 @@ python src/main.py \
   --clean_mem_every 5 \
   --reset_output_dir \
   --classifier_dir="pretrained_classifer/yelp" \
-  --data_path data/test/ \
   --train_src_file data/yelp/train.txt \
   --train_trg_file data/yelp/train.attr \
   --dev_src_file data/yelp/dev_li.txt \
@@ -45,4 +44,3 @@ python src/main.py \
   --klw 0.1 \
   --lm \
   --avg_len \
-  # --gs_soft \

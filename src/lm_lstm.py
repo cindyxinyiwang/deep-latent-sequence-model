@@ -192,9 +192,9 @@ def init_args():
   args.cuda = torch.cuda.is_available()
 
   if args.eval_from == "":
-    args.output_dir = "pretrained_lm_new/{}_style{}/".format(args.dataset, args.style)
+    args.output_dir = "pretrained_lm/{}_style{}/".format(args.dataset, args.style)
   else:
-    args.output_dir = "pretrained_lm_new/{}_eval_style{}/".format(args.dataset, args.style)
+    args.output_dir = "pretrained_lm/{}_eval_style{}/".format(args.dataset, args.style)
 
   if args.output != "":
     args.output_dir = args.output
