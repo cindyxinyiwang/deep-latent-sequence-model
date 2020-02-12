@@ -37,19 +37,19 @@ def save_response_content(response, destination):
                 f.write(chunk)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="data downloading")
+    parser = argparse.ArgumentParser(description="classifer downloading")
     parser.add_argument('--dataset', choices=["yelp", "shakespeare", "all"],
-        default="decipher", help='dataset to use')
+        default="yelp", help='dataset to use')
 
     args = parser.parse_args()
 
-    if not os.path.exists("data"):
-        os.makedirs("data")
+    if not os.path.exists("pretrained_classifer"):
+        os.makedirs("pretrained_classifer")
 
     os.chdir("pretrained_classifer")
 
     yelp_id = ""
-    shakespeare_id = "1UImV9eKN9s1__H-MAdSVQPwG_cH7Dx9N"
+    shakespeare_id = ""
 
     if args.dataset == "yelp":
         file_id = [yelp_id]

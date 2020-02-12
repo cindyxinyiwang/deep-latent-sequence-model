@@ -37,21 +37,21 @@ def save_response_content(response, destination):
                 f.write(chunk)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="data downloading")
+    parser = argparse.ArgumentParser(description="lm downloading")
     parser.add_argument('--dataset', choices=["yelp", "decipher", "sr_bos", "shakespeare", "all"],
         default="yelp", help='dataset to use')
 
     args = parser.parse_args()
 
-    if not os.path.exists("data"):
-        os.makedirs("data")
+    if not os.path.exists("pretrained_lm"):
+        os.makedirs("pretrained_lm")
 
     os.chdir("pretrained_lm")
 
     yelp_id = ""
-    decipher_id = "1GkfJ_bGATLQTq1xaDhHFE3ynQ1cYDNYX"
-    sr_bos_id = "163KmzacA2QV7gFmp-o5pwHw7KSyhFX16"
-    shakespeare_id = "1MRiysOHqcMHoGiPyYTcV5UlRpwNaRJcm"
+    decipher_id = ""
+    sr_bos_id = ""
+    shakespeare_id = "1Gr9nHpCAoAPufw6ZKI6maoQ2wCMZ2qw9"
 
     if args.dataset == "yelp":
         file_id = [yelp_id]
