@@ -19,7 +19,7 @@ Please contact junxianh@cs.cmu.edu if you have any quesitons.
 * PyTorch >= 1.0
 
 ## Data
-Datasets used in sentiment transfer, decipherment, author imitation, and related language translation tasks  can be downloaded with:
+Datasets used in sentiment transfer, decipherment, author imitation, and related language translation tasks  can be downloaded with (this repo only supports yelp and shakespeare experiments right now, we plan to add the other two tasks before 2/14):
 ```
 python prepare_data.py --dataset [yelp|decipher|shakespeare|src_bos]
 ```
@@ -65,13 +65,7 @@ To run the code on your own text/image dataset, you need to create a new configu
 
 
 
-Train LSTM classifiers:
-
-```
-
-```
-
-
+Train LSTM classifiers: see `./scripts/train_classifer.sh` for an example to tain an LSTM classifer on shakespeare dataset.
 
 
 ## Acknowledgement
