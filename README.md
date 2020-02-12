@@ -11,7 +11,10 @@ The code implements a deep latent sequence model that performs unsupervised styl
 
 Please contact junxianh@cs.cmu.edu if you have any quesitons.
 
+## ![model](/Users/jxhe/Dropbox/Projects/TextStyleTransfer/images/model.png)
+
 ## Requirements
+
 * Python 3
 * PyTorch >= 1.0
 
