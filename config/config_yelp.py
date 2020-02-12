@@ -32,7 +32,7 @@ params1={
 }
 
 params_main={
-  "lm_style0":"pretrained_lm_new/yelp_style0/model.pt",
-  "lm_style1":"pretrained_lm_new/yelp_style1/model.pt",
+  "lm_style0":"pretrained_lm/yelp_style0/model.pt",
+  "lm_style1":"pretrained_lm/yelp_style1/model.pt",
   "eval_cls": True
 }
