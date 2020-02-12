@@ -48,8 +48,8 @@ if __name__ == "__main__":
 
     os.chdir("pretrained_classifer")
 
-    yelp_id = ""
-    shakespeare_id = ""
+    yelp_id = "1ZqjzxVx8ekOYTjNBYsI8FWT7UzHeZNOe"
+    shakespeare_id = "16lsXqxgAS4V6naJiNYZ0VZ2ZofA81fEX"
 
     if args.dataset == "yelp":
         file_id = [yelp_id]

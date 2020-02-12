@@ -48,7 +48,7 @@ if __name__ == "__main__":
 
     os.chdir("pretrained_lm")
 
-    yelp_id = ""
+    yelp_id = "1NU8nRWxrF1n4z8jFbRaYBaw913hBLdgE"
     decipher_id = ""
     sr_bos_id = ""
     shakespeare_id = "1Gr9nHpCAoAPufw6ZKI6maoQ2wCMZ2qw9"
