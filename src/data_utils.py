@@ -3,7 +3,6 @@ import numpy as np
 import os
 
 import torch
-from torch.autograd import Variable
 
 class DataUtil(object):
 
@@ -97,7 +96,7 @@ class DataUtil(object):
     # sample some y
     # y_sampled = [self.sample_y() for _ in range(batch_size)]
     # y_sampled, y_sampled_mask, y_sampled_count, y_sampled_len, y_sampled_pos_emb_idxs = self._pad(y_sampled, self.hparams.trg_pad_id)
-    y_sampled = 1. - y_train
+    y_sampled = 1 - y_train
     y_sampled_mask = y_mask
     y_sampled_count = y_count
     y_sampled_len = y_len
@@ -191,10 +190,10 @@ class DataUtil(object):
     padded_sentences = [s + ([pad_id]*(max_len - len(s))) for s in sentences]
 
     mask = [[0]*len(s) + [1]*(max_len - len(s)) for s in sentences]
-    padded_sentences = Variable(torch.LongTensor(padded_sentences))
+    padded_sentences = torch.LongTensor(padded_sentences)
     mask = torch.ByteTensor(mask)
     pos_emb_indices = [[i+1 for i in range(len(s))] + ([0]*(max_len - len(s))) for s in sentences]
-    pos_emb_indices = Variable(torch.FloatTensor(pos_emb_indices))
+    pos_emb_indices = torch.FloatTensor(pos_emb_indices)
     if self.hparams.cuda:
       padded_sentences = padded_sentences.cuda()
       pos_emb_indices = pos_emb_indices.cuda()

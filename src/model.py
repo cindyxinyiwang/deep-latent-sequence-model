@@ -122,7 +122,6 @@ class Decoder(nn.Module):
                              hparams.d_model)
     self.dropout = nn.Dropout(hparams.dropout)
 
-  # TODO(junxian): why only use y embedding in the first time stamp ?
   def forward(self, x_enc, x_enc_k, dec_init, x_mask, y_train, y_mask, y_len, x_train, x_len):
     # get decoder init state and cell, use x_ct
     """
@@ -351,10 +350,6 @@ class Seq2Seq(nn.Module):
 
     log_p0 = F.log_softmax(logits_0, dim=2)
     log_p1 = F.log_softmax(logits_1, dim=2)
-
-    if self.hparams.lm_stop_grad:
-        log_p0 = log_p0.detach()
-        log_p1 = log_p1.detach()
 
     ll0 = ((log_p0 * tgt).sum(dim=2) * (1. - x_mask)).sum(dim=1)
     ll1 = ((log_p1 * tgt).sum(dim=2) * (1. - x_mask)).sum(dim=1)

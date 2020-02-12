@@ -26,156 +26,266 @@ if __name__ == "__main__":
 
 parser = argparse.ArgumentParser(description="Neural MT")
 
-parser.add_argument("--dataset", type=str, help="dataset name, mainly for naming purpose")
+parser.add_argument("--dataset", type=str, 
+    help="dataset name, mainly for naming purpose")
 
-parser.add_argument("--always_save", action="store_true", help="always_save")
+parser.add_argument("--always_save", action="store_true", 
+    help="always_save")
 
-parser.add_argument("--residue", action="store_true", help="whether to set all unk words of rl to a reserved id")
-parser.add_argument("--layer_norm", action="store_true", help="whether to set all unk words of rl to a reserved id")
-parser.add_argument("--src_no_char", action="store_true", help="load an existing model")
-parser.add_argument("--trg_no_char", action="store_true", help="load an existing model")
-parser.add_argument("--char_gate", action="store_true", help="load an existing model")
-parser.add_argument("--shuffle_train", action="store_true", help="load an existing model")
-parser.add_argument("--ordered_char_dict", action="store_true", help="load an existing model")
-parser.add_argument("--out_c_list", type=str, default=None, help="list of output channels for char cnn emb")
-parser.add_argument("--k_list", type=str, default=None, help="list of kernel size for char cnn emb")
-parser.add_argument("--highway", action="store_true", help="load an existing model")
-parser.add_argument("--n", type=int, default=4, help="ngram n")
-parser.add_argument("--single_n", action="store_true", help="ngram n")
-parser.add_argument("--bpe_ngram", action="store_true", help="bpe ngram")
-parser.add_argument("--uni", action="store_true", help="Gu Universal NMT")
-parser.add_argument("--pretrained_src_emb_list", type=str, default=None, help="ngram n")
-parser.add_argument("--pretrained_trg_emb", type=str, default=None, help="ngram n")
+parser.add_argument("--residue", action="store_true", 
+    help="whether to set all unk words of rl to a reserved id")
+parser.add_argument("--layer_norm", action="store_true", 
+    help="whether to set all unk words of rl to a reserved id")
+parser.add_argument("--src_no_char", action="store_true", 
+    help="load an existing model")
+parser.add_argument("--trg_no_char", action="store_true", 
+    help="load an existing model")
+parser.add_argument("--char_gate", action="store_true", 
+    help="load an existing model")
+parser.add_argument("--shuffle_train", action="store_true", 
+    help="load an existing model")
+parser.add_argument("--ordered_char_dict", action="store_true", 
+    help="load an existing model")
+parser.add_argument("--out_c_list", type=str, default=None, 
+    help="list of output channels for char cnn emb")
+parser.add_argument("--k_list", type=str, default=None, 
+    help="list of kernel size for char cnn emb")
+parser.add_argument("--highway", action="store_true", 
+    help="load an existing model")
+parser.add_argument("--n", type=int, default=4, 
+    help="ngram n")
+parser.add_argument("--single_n", action="store_true", 
+    help="ngram n")
+parser.add_argument("--bpe_ngram", action="store_true", 
+    help="bpe ngram")
+parser.add_argument("--uni", action="store_true", 
+    help="Gu Universal NMT")
+parser.add_argument("--pretrained_src_emb_list", type=str, default=None, 
+    help="ngram n")
+parser.add_argument("--pretrained_trg_emb", type=str, default=None, 
+    help="ngram n")
 
-parser.add_argument("--load_model", action="store_true", help="load an existing model")
-parser.add_argument("--load_for_test", action="store_true", help="load an existing model and test")
-parser.add_argument("--reset_output_dir", action="store_true", help="delete output directory if it exists")
-parser.add_argument("--output_dir", type=str, default="", help="path to output directory")
-parser.add_argument("--classifier_dir", type=str, default="", help="directory that stores the classifier model")
-parser.add_argument("--log_every", type=int, default=50, help="how many steps to write log")
-parser.add_argument("--eval_every", type=int, default=500, help="how many steps to compute valid ppl")
-parser.add_argument("--clean_mem_every", type=int, default=10, help="how many steps to clean memory")
-parser.add_argument("--eval_bleu", action="store_true", help="if calculate BLEU score for dev set")
-parser.add_argument("--beam_size", type=int, default=5, help="beam size for dev BLEU")
-parser.add_argument("--poly_norm_m", type=float, default=1, help="beam size for dev BLEU")
-parser.add_argument("--ppl_thresh", type=float, default=20, help="beam size for dev BLEU")
-parser.add_argument("--max_trans_len", type=int, default=300, help="beam size for dev BLEU")
-parser.add_argument("--merge_bpe", action="store_true", help="if calculate BLEU score for dev set")
-parser.add_argument("--dev_zero", action="store_true", help="if eval at step 0")
+parser.add_argument("--load_model", action="store_true", 
+    help="load an existing model")
+parser.add_argument("--load_for_test", action="store_true", 
+    help="load an existing model and test")
+parser.add_argument("--reset_output_dir", action="store_true", 
+    help="delete output directory if it exists")
+parser.add_argument("--output_dir", type=str, default="", 
+    help="path to output directory")
+parser.add_argument("--classifier_dir", type=str, default="", 
+    help="directory that stores the classifier model")
+parser.add_argument("--log_every", type=int, default=50, 
+    help="how many steps to write log")
+parser.add_argument("--eval_every", type=int, default=500, 
+    help="how many steps to compute valid ppl")
+parser.add_argument("--clean_mem_every", type=int, default=10, 
+    help="how many steps to clean memory")
+parser.add_argument("--eval_bleu", action="store_true", 
+    help="if calculate BLEU score for dev set")
+parser.add_argument("--beam_size", type=int, default=5, 
+    help="beam size for dev BLEU")
+parser.add_argument("--poly_norm_m", type=float, default=1, 
+    help="beam size for dev BLEU")
+parser.add_argument("--ppl_thresh", type=float, default=20, 
+    help="beam size for dev BLEU")
+parser.add_argument("--max_trans_len", type=int, default=300, 
+    help="beam size for dev BLEU")
+parser.add_argument("--merge_bpe", action="store_true", 
+    help="if calculate BLEU score for dev set")
+parser.add_argument("--dev_zero", action="store_true", 
+    help="if eval at step 0")
 
-parser.add_argument("--cuda", action="store_true", help="GPU or not")
-parser.add_argument("--decode", action="store_true", help="whether to decode only")
+parser.add_argument("--cuda", action="store_true", 
+    help="GPU or not")
+parser.add_argument("--decode", action="store_true", 
+    help="whether to decode only")
 
-parser.add_argument("--max_len", type=int, default=10000, help="maximum len considered on the target side")
-parser.add_argument("--n_train_sents", type=int, default=None, help="max number of training sentences to load")
+parser.add_argument("--max_len", type=int, default=10000, 
+    help="maximum len considered on the target side")
+parser.add_argument("--n_train_sents", type=int, default=None, 
+    help="max number of training sentences to load")
 
-parser.add_argument("--d_word_vec", type=int, default=288, help="size of word and positional embeddings")
-parser.add_argument("--d_char_vec", type=int, default=None, help="size of word and positional embeddings")
-parser.add_argument("--d_model", type=int, default=288, help="size of hidden states")
-parser.add_argument("--d_inner", type=int, default=512, help="hidden dim of position-wise ff")
-parser.add_argument("--n_layers", type=int, default=1, help="number of lstm layers")
-parser.add_argument("--n_heads", type=int, default=3, help="number of attention heads")
-parser.add_argument("--d_k", type=int, default=64, help="size of attention head")
-parser.add_argument("--d_v", type=int, default=64, help="size of attention head")
-parser.add_argument("--pos_emb_size", type=int, default=None, help="size of trainable pos emb")
+parser.add_argument("--d_word_vec", type=int, default=288, 
+    help="size of word and positional embeddings")
+parser.add_argument("--d_char_vec", type=int, default=None, 
+    help="size of word and positional embeddings")
+parser.add_argument("--d_model", type=int, default=288, 
+    help="size of hidden states")
+parser.add_argument("--d_inner", type=int, default=512, 
+    help="hidden dim of position-wise ff")
+parser.add_argument("--n_layers", type=int, default=1, 
+    help="number of lstm layers")
+parser.add_argument("--n_heads", type=int, default=3, 
+    help="number of attention heads")
+parser.add_argument("--d_k", type=int, default=64, 
+    help="size of attention head")
+parser.add_argument("--d_v", type=int, default=64, 
+    help="size of attention head")
+parser.add_argument("--pos_emb_size", type=int, default=None, 
+    help="size of trainable pos emb")
 
-parser.add_argument("--data_path", type=str, default=None, help="path to all data")
-parser.add_argument("--train_src_file", type=str, default=None, help="source train file")
-parser.add_argument("--train_trg_file", type=str, default=None, help="target train file")
-parser.add_argument("--dev_src_file", type=str, default=None, help="source valid file")
-parser.add_argument("--dev_trg_file", type=str, default=None, help="target valid file")
-parser.add_argument("--dev_trg_ref", type=str, default=None, help="target valid file for reference")
-parser.add_argument("--src_vocab", type=str, default=None, help="source vocab file")
-parser.add_argument("--trg_vocab", type=str, default=None, help="target vocab file")
-parser.add_argument("--test_src_file", type=str, default=None, help="source test file")
-parser.add_argument("--test_trg_file", type=str, default=None, help="target test file")
-parser.add_argument("--src_char_vocab_from", type=str, default=None, help="source char vocab file")
-parser.add_argument("--src_char_vocab_size", type=str, default=None, help="source char vocab file")
-parser.add_argument("--trg_char_vocab_from", type=str, default=None, help="source char vocab file")
-parser.add_argument("--trg_char_vocab_size", type=str, default=None, help="source char vocab file")
-parser.add_argument("--src_vocab_size", type=int, default=None, help="src vocab size")
-parser.add_argument("--trg_vocab_size", type=int, default=None, help="trg vocab size")
+parser.add_argument("--data_path", type=str, default=None, 
+    help="path to all data")
+parser.add_argument("--train_src_file", type=str, default=None, 
+    help="source train file")
+parser.add_argument("--train_trg_file", type=str, default=None, 
+    help="target train file")
+parser.add_argument("--dev_src_file", type=str, default=None, 
+    help="source valid file")
+parser.add_argument("--dev_trg_file", type=str, default=None, 
+    help="target valid file")
+parser.add_argument("--dev_trg_ref", type=str, default=None, 
+    help="target valid file for reference")
+parser.add_argument("--src_vocab", type=str, default=None, 
+    help="source vocab file")
+parser.add_argument("--trg_vocab", type=str, default=None, 
+    help="target vocab file")
+parser.add_argument("--test_src_file", type=str, default=None, 
+    help="source test file")
+parser.add_argument("--test_trg_file", type=str, default=None, 
+    help="target test file")
+parser.add_argument("--src_char_vocab_from", type=str, default=None, 
+    help="source char vocab file")
+parser.add_argument("--src_char_vocab_size", type=str, default=None, 
+    help="source char vocab size")
+parser.add_argument("--trg_char_vocab_from", type=str, default=None, 
+    help="target char vocab file")
+parser.add_argument("--trg_char_vocab_size", type=str, default=None, 
+    help="target char vocab file")
+parser.add_argument("--src_vocab_size", type=int, default=None, 
+    help="src vocab size")
+parser.add_argument("--trg_vocab_size", type=int, default=None, 
+    help="trg vocab size")
 
-parser.add_argument("--batch_size", type=int, default=32, help="batch_size")
-parser.add_argument("--valid_batch_size", type=int, default=20, help="batch_size")
-parser.add_argument("--batcher", type=str, default="sent", help="sent|word. Batch either by number of words or number of sentences")
-parser.add_argument("--n_train_steps", type=int, default=100000, help="n_train_steps")
-parser.add_argument("--n_train_epochs", type=int, default=0, help="n_train_epochs")
-parser.add_argument("--dropout", type=float, default=0., help="probability of dropping")
-parser.add_argument("--lr", type=float, default=0.001, help="learning rate")
-parser.add_argument("--lr_dec", type=float, default=0.5, help="learning rate decay")
-parser.add_argument("--lr_min", type=float, default=0.0001, help="min learning rate")
-parser.add_argument("--lr_max", type=float, default=0.001, help="max learning rate")
-parser.add_argument("--lr_dec_steps", type=int, default=0, help="cosine delay: learning rate decay steps")
+parser.add_argument("--batch_size", type=int, default=32, 
+    help="batch_size")
+parser.add_argument("--valid_batch_size", type=int, default=20, 
+    help="batch_size")
+parser.add_argument("--batcher", type=str, default="sent", 
+    help="sent|word. Batch either by number of words or number of sentences")
+parser.add_argument("--n_train_steps", type=int, default=100000, 
+    help="n_train_steps")
+parser.add_argument("--n_train_epochs", type=int, default=0, 
+    help="n_train_epochs")
+parser.add_argument("--dropout", type=float, default=0., 
+    help="probability of dropping")
+parser.add_argument("--lr", type=float, default=0.001, 
+    help="learning rate")
+parser.add_argument("--lr_dec", type=float, default=0.5, 
+    help="learning rate decay")
+parser.add_argument("--lr_min", type=float, default=0.0001, 
+    help="min learning rate")
+parser.add_argument("--lr_max", type=float, default=0.001, 
+    help="max learning rate")
+parser.add_argument("--lr_dec_steps", type=int, default=0, 
+    help="cosine delay: learning rate decay steps")
 
-parser.add_argument("--n_warm_ups", type=int, default=0, help="lr warm up steps")
-parser.add_argument("--lr_schedule", action="store_true", help="whether to use transformer lr schedule")
-parser.add_argument("--clip_grad", type=float, default=5., help="gradient clipping")
-parser.add_argument("--l2_reg", type=float, default=0., help="L2 regularization")
-parser.add_argument("--patience", type=int, default=-1, help="patience")
-parser.add_argument("--eval_end_epoch", action="store_true", help="whether to reload the hparams")
+parser.add_argument("--n_warm_ups", type=int, default=0, 
+    help="lr warm up steps")
+parser.add_argument("--lr_schedule", action="store_true", 
+    help="whether to use transformer lr schedule")
+parser.add_argument("--clip_grad", type=float, default=5., 
+    help="gradient clipping")
+parser.add_argument("--l2_reg", type=float, default=0., 
+    help="L2 regularization")
+parser.add_argument("--patience", type=int, default=-1, 
+    help="patience")
+parser.add_argument("--eval_end_epoch", action="store_true", 
+    help="whether to reload the hparams")
 
-parser.add_argument("--seed", type=int, default=19920206, help="random seed")
+parser.add_argument("--seed", type=int, default=19920206, 
+    help="random seed")
 
-parser.add_argument("--init_range", type=float, default=0.1, help="L2 init range")
-parser.add_argument("--init_type", type=str, default="uniform", help="uniform|xavier_uniform|xavier_normal|kaiming_uniform|kaiming_normal")
+parser.add_argument("--init_range", type=float, default=0.1, 
+    help="L2 init range")
+parser.add_argument("--init_type", type=str, default="uniform", 
+    help="uniform|xavier_uniform|xavier_normal|kaiming_uniform|kaiming_normal")
 
-parser.add_argument("--share_emb_softmax", action="store_true", help="weight tieing")
-parser.add_argument("--label_smoothing", type=float, default=None, help="label smooth")
-parser.add_argument("--reset_hparams", action="store_true", help="whether to reload the hparams")
+parser.add_argument("--share_emb_softmax", action="store_true", 
+    help="weight tieing")
+parser.add_argument("--label_smoothing", type=float, default=None, 
+    help="label smooth")
+parser.add_argument("--reset_hparams", action="store_true", 
+    help="whether to reload the hparams")
 
-parser.add_argument("--char_ngram_n", type=int, default=0, help="use char_ngram embedding")
-parser.add_argument("--max_char_vocab_size", type=int, default=None, help="char vocab size")
+parser.add_argument("--char_ngram_n", type=int, default=0, 
+    help="use char_ngram embedding")
+parser.add_argument("--max_char_vocab_size", type=int, default=None, 
+    help="char vocab size")
 
-parser.add_argument("--char_input", type=str, default=None, help="[sum|cnn]")
-parser.add_argument("--char_comb", type=str, default="add", help="[cat|add]")
+parser.add_argument("--char_input", type=str, default=None, 
+    help="[sum|cnn]")
+parser.add_argument("--char_comb", type=str, default="add", 
+    help="[cat|add]")
 
-parser.add_argument("--char_temp", type=float, default=None, help="temperature to combine word and char emb")
+parser.add_argument("--char_temp", type=float, default=None, 
+    help="temperature to combine word and char emb")
 
-parser.add_argument("--pretrained_model", type=str, default=None, help="location of pretrained model")
+parser.add_argument("--pretrained_model", type=str, default=None, 
+    help="location of pretrained model")
 
-parser.add_argument("--src_char_only", action="store_true", help="only use char emb on src")
-parser.add_argument("--trg_char_only", action="store_true", help="only use char emb on trg")
+parser.add_argument("--src_char_only", action="store_true", 
+    help="only use char emb on src")
+parser.add_argument("--trg_char_only", action="store_true", 
+    help="only use char emb on trg")
 
-parser.add_argument("--model_type", type=str, default="seq2seq", help="[seq2seq|transformer]")
-parser.add_argument("--share_emb_and_softmax", action="store_true", help="only use char emb on trg")
-parser.add_argument("--transformer_wdrop", action="store_true", help="whether to drop out word embedding of transformer")
-parser.add_argument("--transformer_relative_pos", action="store_true", help="whether to use relative positional encoding of transformer")
-parser.add_argument("--relative_pos_c", action="store_true", help="whether to use relative positional encoding of transformer")
-parser.add_argument("--relative_pos_d", action="store_true", help="whether to use relative positional encoding of transformer")
-parser.add_argument("--update_batch", type=int, default="1", help="for how many batches to call backward and optimizer update")
-parser.add_argument("--layernorm_eps", type=float, default=1e-9, help="layernorm eps")
+parser.add_argument("--model_type", type=str, default="seq2seq", 
+    help="[seq2seq|transformer]")
+parser.add_argument("--share_emb_and_softmax", action="store_true", 
+    help="only use char emb on trg")
+parser.add_argument("--transformer_wdrop", action="store_true", 
+    help="whether to drop out word embedding of transformer")
+parser.add_argument("--transformer_relative_pos", action="store_true", 
+    help="whether to use relative positional encoding of transformer")
+parser.add_argument("--relative_pos_c", action="store_true", 
+    help="whether to use relative positional encoding of transformer")
+parser.add_argument("--relative_pos_d", action="store_true", 
+    help="whether to use relative positional encoding of transformer")
+parser.add_argument("--update_batch", type=int, default="1", 
+    help="for how many batches to call backward and optimizer update")
+parser.add_argument("--layernorm_eps", type=float, default=1e-9, 
+    help="layernorm eps")
 
 # noise parameters
-parser.add_argument("--word_blank", type=float, default=0.2, help="blank words probability")
-parser.add_argument("--word_dropout", type=float, default=0.2, help="drop words probability")
-parser.add_argument("--word_shuffle", type=float, default=1.5, help="shuffle sentence strength")
+parser.add_argument("--word_blank", type=float, default=0.2, 
+    help="blank words probability")
+parser.add_argument("--word_dropout", type=float, default=0.2, 
+    help="drop words probability")
+parser.add_argument("--word_shuffle", type=float, default=1.5, 
+    help="shuffle sentence strength")
 
 # balance training objective
 parser.add_argument("--anneal_epoch", type=int, default=1,
-    help="decrease the weight of autoencoding loss from 1.0 to 0.0 in the first anneal_iter epoch")
+    help="decrease the weight of autoencoding loss from 1.0 to 0.0 in the first anneal_epoch epoch")
 
 # sampling parameters
-parser.add_argument("--temperature", type=float, default=1., help="softmax temperature during training, a small value approx greedy decoding")
-parser.add_argument("--gumbel_softmax", action="store_true", help="use gumbel softmax in back-translation")
+parser.add_argument("--temperature", type=float, default=1., 
+    help="softmax temperature during training, a small value approx greedy decoding")
+parser.add_argument("--gumbel_softmax", action="store_true", 
+    help="use gumbel softmax in back-translation")
+parser.add_argument("--lm", action="store_true", 
+    help="whether including the LM loss")
+parser.add_argument("--reconstruct", action="store_true", help=
+    "whether perform reconstruction or transfer when validating bleu")
+parser.add_argument("--decode_on_y", action="store_true", 
+    help="whether to use cond on y at every step when decoding")
+parser.add_argument("--attempt_before_decay", type=int, default=0, 
+    help="times to try before lr decay")
 
-parser.add_argument("--lm", action="store_true", help="whether including the LM loss")
-parser.add_argument("--reconstruct", action="store_true", help="whether perform reconstruction or transfer when validating bleu")
 
-parser.add_argument("--decode_on_y", action="store_true", help="whether to use cond on y at every step when decoding")
-parser.add_argument("--attempt_before_decay", type=int, default=0, help="times to try before lr decay")
-
-parser.add_argument("--max_pool_k_size", type=int, default=0, help="max pooling kernel size")
-parser.add_argument("--gs_soft", action="store_true", help="whether soft gumbel softmax")
+parser.add_argument("--max_pool_k_size", type=int, default=0, 
+    help="max pooling kernel size")
+parser.add_argument("--gs_soft", action="store_true", 
+    help="soft gumbel softmax if true, otherwise straight-through estimator (gumbel-softmax is always used in the KL loss term)")
 parser.add_argument("--klw", type=float, default=1., help="KL loss weight")
-parser.add_argument("--lm_stop_grad", action="store_true")
 parser.add_argument("--bt", action="store_true", help="whether use back translation loss")
-parser.add_argument("--bt_stop_grad", action="store_true",
+parser.add_argument("--bt_stop_grad", action="store_true", 
     help="whether stop gradients through back translation, ignored when gumbel_softmax is false")
 parser.add_argument("--avg_len", action="store_true",
     help="whether average over sentence length when computing loss")
 parser.add_argument("--dual", action="store_true",
-    help="replace KL term with LM likelihood")
+    help="replace KL term with LM log likelihood if true (BT+NLL baseline in the paper)")
 
 args = parser.parse_args()
 
@@ -193,15 +303,14 @@ if args.output_dir == "":
 
     gs_str = "_gs" if args.gumbel_softmax else ""
 
-    lm_stop_grad = "__init__lmsg" if args.lm_stop_grad and args.lm else ""
     bt = "_bt" if args.bt else ""
     bt_stop_grad = "_btsg" if args.bt_stop_grad and args.bt and args.gumbel_softmax else ""
     avg = "_avglen" if args.avg_len else ""
     dual_str = "_dual" if args.dual else ""
 
-    args.output_dir = "outputs_{}_CVAE_iclrrebuttal{}/{}_wd{}_wb{}_ws{}_an{}_pool{}_klw{}_lr{}_{}{}{}{}{}{}{}{}{}/".format(args.dataset, dual_str, args.dataset,
+    args.output_dir = "outputs_{}{}/{}_wd{}_wb{}_ws{}_an{}_pool{}_klw{}_lr{}_{}{}{}{}{}{}{}{}/".format(args.dataset, dual_str, args.dataset,
         args.word_dropout, args.word_blank, args.word_shuffle, args.anneal_epoch,
-        args.max_pool_k_size, args.klw, args.lr, dn, lm, bt, decode_y, gs_str, gs_soft, lm_stop_grad,
+        args.max_pool_k_size, args.klw, args.lr, dn, lm, bt, decode_y, gs_str, gs_soft,
         bt_stop_grad, avg)
 
 args.device = torch.device("cuda" if args.cuda else "cpu")
@@ -404,12 +513,7 @@ def train():
       model_name = os.path.join(args.pretrained_model, "model.pt")
       print("Loading model from '{0}'".format(model_name))
       model = torch.load(model_name)
-      #if not hasattr(model, 'data'):
-      #  model.data = data
-      #if not hasattr(model, 'char_ngram_n'):
-      #  model.hparams.char_ngram_n = 0
-      #if not hasattr(model, 'char_input'):
-      #  model.hparams.char_input = None
+
       print("load hparams..")
       hparams_file_name = os.path.join(args.pretrained_model, "hparams.pt")
       reload_hparams = torch.load(hparams_file_name)
@@ -418,16 +522,6 @@ def train():
       reload_hparams.dropout = hparams.dropout
       reload_hparams.lr_dec = hparams.lr_dec
       hparams = reload_hparams
-      #hparams.src_vocab_list = reload_hparams.src_vocab_list
-      #hparams.src_vocab_size = reload_hparams.src_vocab_size
-      #hparams.trg_vocab_list = reload_hparams.trg_vocab_list
-      #hparams.trg_vocab_size = reload_hparams.trg_vocab_size
-      #hparams.src_char_vocab_from = reload_hparams.src_char_vocab_from
-      #hparams.src_char_vocab_size = reload_hparams.src_char_vocab_size
-      #hparams.trg_char_vocab_from = reload_hparams.trg_char_vocab_from
-      #hparams.trg_char_vocab_size = reload_hparams.trg_char_vocab_size
-      #print(reload_hparams.src_char_vocab_from)
-      #print(reload_hparams.src_char_vocab_size)
       data = DataUtil(hparams=hparams)
       model.data = data
     else:
