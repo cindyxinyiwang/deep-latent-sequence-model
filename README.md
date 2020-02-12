@@ -11,7 +11,7 @@ The code implements a deep latent sequence model that performs unsupervised styl
 
 Please contact junxianh@cs.cmu.edu if you have any quesitons.
 
-## ![model](/Users/jxhe/Dropbox/Projects/TextStyleTransfer/images/model.png)
+<img align="center" src="images/model.png" />
 
 ## Requirements
 
