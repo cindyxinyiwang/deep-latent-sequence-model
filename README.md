@@ -21,7 +21,7 @@ Please contact junxianh@cs.cmu.edu if you have any quesitons.
 ## Data
 Datasets used in sentiment transfer, decipherment, author imitation, and related language translation tasks  can be downloaded with (this repo only supports yelp and shakespeare experiments right now, we plan to add the other two tasks before 2/14):
 ```
-python prepare_data.py --dataset [yelp|decipher|shakespeare|src_bos]
+python scripts/prepare_data.py --dataset [yelp|decipher|shakespeare|src_bos]
 ```
 Downloaded data is located in `./data` folder. For the formality transfer dataset please see its [official repo](https://github.com/raosudha89/GYAFC-corpus).
 
@@ -30,12 +30,12 @@ Our approach requires pretrained LMs as priors for each domain during trainining
 
 Download pretrained lms (located in folder `./pretrained_lm`):
 ```
-python prepare_lm.py --dataset [yelp|shakespeare|decipher|sr_bos]
+python scripts/prepare_lm.py --dataset [yelp|shakespeare|decipher|sr_bos]
 ```
 
 Download pretrained classifiers (located in folder `./pretrained_classifer`):
 ```
-python prepare_classifier --dataset [yelp|shakespeare|decipher|sr_bos]
+python scripts/prepare_classifier --dataset [yelp|shakespeare|decipher|sr_bos]
 ```
 
 ## Usage
