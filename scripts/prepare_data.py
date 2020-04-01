@@ -47,7 +47,7 @@ if __name__ == "__main__":
 
     yelp_id = "1IxiyjuTc_syRaqoZg6enS5013NdVrvvg"
     decipher_id = ""
-    sr_bos_id = "1bLaSfbMSNGAMYclnjCbz7mb72OeIZOtv"
+    sr_bos_id = "1Ydj_AR1Y4XmwwqyVeFXkjNOXzE1rOIDL"
     shakespeare_id = "11IeX-I9vcpBca9-idUunX5AKXRD_3Erl"
 
     if args.dataset == "yelp":
