@@ -34,8 +34,8 @@ def save_response_content(response, destination):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="data downloading")
-    parser.add_argument('--dataset', choices=["yelp", 
-        "decipher", "sr_bos", "shakespeare", "all"], 
+    parser.add_argument('--dataset', choices=["yelp",
+        "decipher", "sr_bos", "shakespeare", "all"],
         default="yelp", help='dataset to use')
 
     args = parser.parse_args()
@@ -47,7 +47,7 @@ if __name__ == "__main__":
 
     yelp_id = "1IxiyjuTc_syRaqoZg6enS5013NdVrvvg"
     decipher_id = ""
-    sr_bos_id = ""
+    sr_bos_id = "1bLaSfbMSNGAMYclnjCbz7mb72OeIZOtv"
     shakespeare_id = "11IeX-I9vcpBca9-idUunX5AKXRD_3Erl"
 
     if args.dataset == "yelp":
@@ -64,7 +64,7 @@ if __name__ == "__main__":
     destination = "datasets.tar.gz"
 
     for file_id_e in file_id:
-        download_file_from_google_drive(file_id_e, destination)  
+        download_file_from_google_drive(file_id_e, destination)
         tar = tarfile.open(destination, "r:gz")
         tar.extractall()
         tar.close()
