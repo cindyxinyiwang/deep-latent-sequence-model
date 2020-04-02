@@ -19,7 +19,7 @@ Please contact junxianh@cs.cmu.edu if you have any quesitons.
 * PyTorch >= 1.0
 
 ## Data
-Datasets used in sentiment transfer, decipherment, author imitation, and related language translation tasks  can be downloaded with (this repo only supports yelp and shakespeare experiments right now, we plan to add the other two tasks before 2/14):
+Datasets used in sentiment transfer, decipherment, author imitation, and related language translation tasks  can be downloaded with:
 ```
 python scripts/prepare_data.py --dataset [yelp|decipher|shakespeare|src_bos]
 ```

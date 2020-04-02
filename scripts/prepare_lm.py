@@ -49,8 +49,8 @@ if __name__ == "__main__":
     os.chdir("pretrained_lm")
 
     yelp_id = "1NU8nRWxrF1n4z8jFbRaYBaw913hBLdgE"
-    decipher_id = ""
-    sr_bos_id = ""
+    decipher_id = "1xBioGM6U1bB4cMYv51G-3-q9eiG9tlOM"
+    sr_bos_id = "12p1wgfvgu9ecWrb2wbFyqWvjE4EMDPqf"
     shakespeare_id = "1Gr9nHpCAoAPufw6ZKI6maoQ2wCMZ2qw9"
 
     if args.dataset == "yelp":
