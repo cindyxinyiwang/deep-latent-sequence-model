@@ -46,7 +46,7 @@ if __name__ == "__main__":
     os.chdir("data")
 
     yelp_id = "1IxiyjuTc_syRaqoZg6enS5013NdVrvvg"
-    decipher_id = ""
+    decipher_id = "1fFjQPErpU7EvPuY-EtS3rgkdqpdW9qOr"
     sr_bos_id = "1Ydj_AR1Y4XmwwqyVeFXkjNOXzE1rOIDL"
     shakespeare_id = "11IeX-I9vcpBca9-idUunX5AKXRD_3Erl"
 
