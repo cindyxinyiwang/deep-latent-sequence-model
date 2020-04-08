@@ -61,7 +61,7 @@ Train LMs:
 CUDA_VISIBLE_DEVICES=xx bash scripts/train_lm.sh [dataset] [domain_id (0 or 1)]
 ```
 
-To run the code on your own text/image dataset, you need to create a new configuration file in `./config/` folder to specifiy network hyperparameters and datapath. If the new config file is `./config/config_abc.py`, then `[dataset]` needs to be set as `abc` accordingly. Pretrained LMs are saved in `./pretrained_lm/[dataset]` folder.
+To run the code on your own dataset, you need to create a new configuration file in `./config/` folder to specifiy network hyperparameters and datapath. If the new config file is `./config/config_abc.py`, then `[dataset]` needs to be set as `abc` accordingly. Pretrained LMs are saved in `./pretrained_lm/[dataset]` folder.
 
 
 
