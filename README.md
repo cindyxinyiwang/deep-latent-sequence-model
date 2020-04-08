@@ -26,6 +26,8 @@ python scripts/prepare_data.py --dataset [yelp|decipher|shakespeare|src_bos]
 Downloaded data is located in `./data` folder. For the formality transfer dataset please see its [official repo](https://github.com/raosudha89/GYAFC-corpus).
 
 ## Pretrained LMs and Classifiers
+**You can skip pretrained LMs if you only want to train a unsupervised NMT baseline to get some starting performance numbers, or skip pretrained classifiers if you are not planning to print out classification accuracy on the validation set during training.**
+
 Our approach requires pretrained LMs as priors for each domain during trainining, and an oracle classifier is required at test time to compute the accuracy for sentiment, author imitation, and formality transfer tasks. Here we provide our pretrained LMs and classifiers to reproduce the reported results. (Note that we pretrain these models in PyTorch 1.4, inconsistent PyTorch versions might cause loading problems.)
 
 Download pretrained lms (located in folder `./pretrained_lm`):
@@ -49,7 +51,11 @@ Eval:
 CUDA_VISIBLE_DEVICES=xx bash scripts/[dataset]/eval_all.sh [model dir]
 ```
 
-The evaluation command will report several evaluation metrics (e.g. accuracy, self-bleu, reference bleu, and ppl for sentiment transfer task) and also transfer the test sentences to another domain, saved in `[model dir]`.
+The evaluation command will report several evaluation metrics (e.g. accuracy, self-bleu, reference bleu, and ppl for sentiment transfer task) and also transfer the test sentences to another domain, transferred test sentences are saved in `[model dir]`.
+
+**UNMT baseline:** commenting out `--lm` in the training script and make sure to turn on noise options as ``--word_blank 0.2 --word_dropout 0.1 --word_shuffle 3''. The added noise is crucial for th UNMT baseline to work. This baseline would not require a pretrained LM.
+
+**Disabling classifier validation or test:** set `eval_cls` as `False` in the config file, then no classifier would be loaded at training time.
 
 
 
