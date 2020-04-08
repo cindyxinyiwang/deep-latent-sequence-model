@@ -80,7 +80,7 @@ We appreciate the following efforts to publish data that we used in this repo:
 
 * Zichao Yang, Zhiting Hu, Chris Dyer, Eric P Xing, and Taylor Berg-Kirkpatrick. Unsupervised text style transfer using language models as discriminators. NeurIPS 2018.
 
-* Delete, retrieve, generate: A simple approach to sentiment and style transfer. NAACL 2018
+* Juncen Li, Robin Jia, He He, Percy Liang. Delete, retrieve, generate: A simple approach to sentiment and style transfer. NAACL 2018
 
 
 
