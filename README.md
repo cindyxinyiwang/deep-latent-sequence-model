@@ -82,6 +82,8 @@ We appreciate the following efforts to publish data that we used in this repo:
 
 * Juncen Li, Robin Jia, He He, Percy Liang. Delete, retrieve, generate: A simple approach to sentiment and style transfer. NAACL 2018
 
+* Sudha Rao, Joel Tetreault. Dear Sir or Madam, May I introduce the GYAFC Dataset: Corpus, Benchmarks and Metrics for Formality Style Transfer. NAACL 2018
+
 
 
 ## Reference
