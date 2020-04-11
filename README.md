@@ -53,9 +53,9 @@ CUDA_VISIBLE_DEVICES=xx bash scripts/[dataset]/eval_all.sh [model dir]
 
 The evaluation command will report several evaluation metrics (e.g. accuracy, self-bleu, reference bleu, and ppl for sentiment transfer task) and also transfer the test sentences to another domain, transferred test sentences are saved in `[model dir]`.
 
-**UNMT baseline:** commenting out `--lm` in the training script and make sure to turn on noise options as ``--word_blank 0.2 --word_dropout 0.1 --word_shuffle 3''. The added noise is crucial for th UNMT baseline to work. This baseline would not require a pretrained LM.
+**UNMT baseline:** commenting out `--lm` in the training script and make sure to turn on noise options as `--word_blank 0.2 --word_dropout 0.1 --word_shuffle 3`. The added noise is crucial for the UNMT baseline to work. This baseline would not require a pretrained LM.
 
-**Disabling classifier validation or test:** set `eval_cls` as `False` in the config file, then no classifier would be loaded at training time.
+**Disable classifier validation log:** set `eval_cls` as `False` in the config file, then no classifier would be loaded at training time.
 
 
 
