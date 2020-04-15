@@ -37,7 +37,7 @@ python scripts/prepare_lm.py --dataset [yelp|shakespeare|decipher|sr_bos]
 
 Download pretrained classifiers (located in folder `./pretrained_classifer`):
 ```
-python scripts/prepare_classifier --dataset [yelp|shakespeare|decipher|sr_bos]
+python scripts/prepare_classifier.py --dataset [yelp|shakespeare|decipher|sr_bos]
 ```
 
 ## Usage
