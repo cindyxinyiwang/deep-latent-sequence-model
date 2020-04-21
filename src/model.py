@@ -673,7 +673,7 @@ class Seq2Seq(nn.Module):
           new_hyp_scores = (hyp.score * pow(length-1, poly_norm_m) + p_t) / pow(length, poly_norm_m)
         else:
           new_hyp_scores = hyp.score + p_t
-        new_hyp_score_list.append(new_hyp_scores)
+        new_hyp_score_list.append(new_hyp_scores.cpu())
       live_hyp_num = beam_size - len(completed_hyp)
       new_hyp_scores = np.concatenate(new_hyp_score_list).flatten()
       new_hyp_pos = (-new_hyp_scores).argsort()[:live_hyp_num]
