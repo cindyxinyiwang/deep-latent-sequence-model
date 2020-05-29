@@ -21,7 +21,7 @@ Please contact junxianh@cs.cmu.edu if you have any quesitons.
 ## Data
 Datasets used in sentiment transfer, decipherment, author imitation, and related language translation tasks  can be downloaded with:
 ```
-python scripts/prepare_data.py --dataset [yelp|decipher|shakespeare|src_bos]
+python scripts/prepare_data.py --dataset [yelp|decipher|shakespeare|sr_bos]
 ```
 Downloaded data is located in `./data` folder. For the formality transfer dataset please see its [official repo](https://github.com/raosudha89/GYAFC-corpus).
 
