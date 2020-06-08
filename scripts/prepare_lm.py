@@ -56,7 +56,7 @@ if __name__ == "__main__":
     if args.dataset == "yelp":
         file_id = [yelp_id]
     elif args.dataset == "decipher":
-        file_id = [decipher0_8_id]
+        file_id = [decipher_id]
     elif args.dataset == "sr_bos":
         file_id = [sr_bos_id]
     elif args.dataset == "shakespeare":
