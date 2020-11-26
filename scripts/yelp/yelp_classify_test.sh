@@ -13,7 +13,6 @@ python src/cnn_classify.py \
   --output_dir "pretrained_classifer/yelp" \
   --clean_mem_every 5 \
   --reset_output_dir \
-  --data_path data/test/ \
   --train_src_file data/yelp/train.txt \
   --train_trg_file data/yelp/train.attr \
   --dev_src_file data/yelp/test_600.txt \
