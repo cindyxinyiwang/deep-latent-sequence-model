@@ -13,7 +13,6 @@ python src/cnn_classify.py \
   --output_dir "pretrained_classifer/form_em" \
   --clean_mem_every 5 \
   --reset_output_dir \
-  --data_path data/test/ \
   --train_src_file data/form_em/train.txt \
   --train_trg_file data/form_em/train.attr \
   --dev_src_file data/form_em/dev.txt \
